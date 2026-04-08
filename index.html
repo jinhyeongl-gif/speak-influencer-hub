@@ -319,7 +319,7 @@ function Sidebar({ view, setView, stats }) {
     { id: 'db',        label: 'Influencer DB',  count: stats.total },
     { id: 'campaigns', label: 'Campaigns',       count: stats.campaignCount },
     { id: 'sourcing',  label: 'YT Sourcing' },
-    { id: 'outreach',  label: 'ReachOut',        count: stats.outreachActive },
+    { id: 'outreach',  label: 'ReachOut' },
     { id: 'contract',  label: 'Contract',        count: stats.contracted },
     { id: 'content',   label: 'QA',              count: stats.contentActive },
     { id: 'analytics', label: 'Results' },
@@ -363,6 +363,23 @@ function Dashboard({ influencers }) {
   const contacted = influencers.filter(i => i.outreachStatus !== '미컨택').length;
   const contracted= influencers.filter(i => i.contractStatus === '서명 완료').length;
   const uploaded  = influencers.filter(i => ['업로드 완료','검수 완료','승인'].includes(i.contentStatus)).length;
+
+  // 리치아웃 나간 인원 단계별 집계 (DB 상태 무관)
+  const outreachByStage = OUTREACH_STAGES.slice(1).map(stage => ({
+    stage,
+    count: influencers.filter(i => i.outreachStatus === stage).length,
+    color: stage === '거절' ? '#dc2626'
+      : stage === '계약 완료' ? '#16a34a'
+      : stage === '관심' ? '#d97706'
+      : stage === '답변 수신' ? '#0891b2'
+      : '#6366f1',
+    next: stage === '컨택 완료' ? '→ 답변 대기 중'
+      : stage === '답변 수신' ? '→ 팔로우업 필요'
+      : stage === '관심' ? '→ 계약 진행 필요'
+      : stage === '계약 진행 중' ? '→ 계약서 발송 필요'
+      : stage === '계약 완료' ? '→ 콘텐츠 제작 단계'
+      : '',
+  })).filter(s => s.count > 0);
 
   const platSel = {}, catSel = {};
   influencers.filter(i => i.dbStatus === 'Selected (1순위)').forEach(i => {
@@ -423,6 +440,22 @@ function Dashboard({ influencers }) {
           ))}
         </div>
       </div>
+
+      {/* 리치아웃 단계별 현황 (DB 상태 무관) */}
+      {outreachByStage.length > 0 && (
+        <div className="card" style={{ padding: '18px 22px', marginBottom: 20 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 12 }}>📤 리치아웃 단계별 현황 <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>(DB 상태 무관 · 다음 단계 확인)</span></div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {outreachByStage.map(s => (
+              <div key={s.stage} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 16px', minWidth: 130 }}>
+                <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>{s.stage}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: s.color }}>{s.count}<span style={{ fontSize: 12, fontWeight: 400, color: '#94a3b8' }}>명</span></div>
+                {s.next && <div style={{ fontSize: 10, color: s.color, marginTop: 4, fontWeight: 600 }}>{s.next}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* breakdown charts */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -1357,8 +1390,9 @@ function OutreachPage({ influencers, campaigns, updateInf }) {
     ? new Set((campaigns.find(c => c.id === fCampaign)?.influencerIds || []))
     : null;
 
+  // Selected(1순위)이거나, 이미 리치아웃이 나간 인원(outreachStatus !== '미컨택')은 DB 상태와 무관하게 표시
   const pool = influencers.filter(i =>
-    i.dbStatus === 'Selected (1순위)' &&
+    (i.dbStatus === 'Selected (1순위)' || i.outreachStatus !== '미컨택') &&
     (!fPlatform  || i.platform === fPlatform) &&
     (!fCategory  || i.category === fCategory) &&
     (!campFilterIds || campFilterIds.has(i.id)) &&
@@ -1530,7 +1564,7 @@ function OutreachPage({ influencers, campaigns, updateInf }) {
           </span>
         )}
       </div>
-      <div className="section-sub">Selected 인플루언서 컨택 현황 — 총 {pool.length}명</div>
+      <div className="section-sub">리치아웃 현황 (Selected + 컨택 이력 있는 인원) — 총 {pool.length}명</div>
       <div className="filter-bar" style={{ marginBottom: 20 }}>
         <input placeholder="🔍 채널명 검색" value={search} onChange={e => setSearch(e.target.value)} />
         <select value={fPlatform} onChange={e => setFPlatform(e.target.value)}>
