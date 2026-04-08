@@ -1,0 +1,3288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Speak Influencer Hub</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.3/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; background: #f1f5f9; color: #111827; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+table { width: 100%; border-collapse: collapse; }
+th { background: #f8fafc; font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 14px; text-align: left; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; font-size: 13px; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafafa; }
+input, select, textarea { border: 1px solid #e2e8f0; border-radius: 8px; padding: 7px 12px; font-size: 13px; background: white; color: #111827; font-family: inherit; transition: border-color 0.15s, box-shadow 0.15s; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
+button { cursor: pointer; font-family: inherit; transition: all 0.15s; }
+.btn { padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; border: none; }
+.btn-primary { background: #6366f1; color: white; }
+.btn-primary:hover { background: #4f46e5; }
+.btn-secondary { background: white; color: #374151; border: 1px solid #e2e8f0; }
+.btn-secondary:hover { background: #f8fafc; }
+.btn-danger { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+.btn-danger:hover { background: #fecaca; }
+.card { background: white; border-radius: 14px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+.modal { background: white; border-radius: 16px; padding: 28px; max-width: 560px; width: 90vw; max-height: 85vh; overflow-y: auto; box-shadow: 0 25px 50px rgba(0,0,0,0.15); }
+.kanban-col { background: #f8fafc; border-radius: 12px; padding: 14px; min-width: 230px; flex: 0 0 230px; border: 1px solid #e5e7eb; }
+.kanban-card { background: white; border-radius: 10px; padding: 13px; margin-bottom: 8px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.kanban-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-1px); transition: all 0.15s; }
+.side-panel { position: fixed; right: 0; top: 0; width: 390px; height: 100vh; background: white; box-shadow: -4px 0 24px rgba(0,0,0,0.1); z-index: 50; overflow-y: auto; }
+.score-bar { height: 5px; background: #f3f4f6; border-radius: 3px; overflow: hidden; width: 48px; }
+.empty-state { padding: 60px 20px; text-align: center; color: #9ca3af; }
+.stat-number { font-size: 28px; font-weight: 700; line-height: 1; }
+.progress-step { flex: 1; background: #f1f5f9; border-radius: 8px; padding: 14px; text-align: center; }
+.nav-item { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-radius: 8px; border: none; background: transparent; cursor: pointer; font-size: 15.5px; color: #94a3b8; width: 100%; text-align: left; transition: all 0.12s; }
+.nav-item:hover { background: rgba(255,255,255,0.07); color: #cbd5e1; }
+.nav-item.active { background: rgba(249,115,22,0.15); color: #F97316; font-weight: 600; }
+.filter-bar { display: flex; gap: 10px; flex-wrap: wrap; background: white; padding: 14px 16px; border-radius: 12px; border: 1px solid #e5e7eb; margin-bottom: 16px; align-items: center; }
+.section-title { font-size: 20px; font-weight: 700; color: #0f172a; }
+.section-sub { font-size: 13px; color: #64748b; margin-top: 3px; margin-bottom: 22px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+/* ============================================================
+   CONSTANTS
+   ============================================================ */
+const SPEAK_LOGO = "data:image/png;base64,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";
+
+const PLATFORMS = {
+  yt_long:   { label: 'YT 롱폼',  emoji: '📹', bg: '#fee2e2', color: '#dc2626' },
+  yt_shorts: { label: 'YT 쇼츠',  emoji: '▶️', bg: '#fecaca', color: '#b91c1c' },
+  ig_reels:  { label: 'IG 릴스',  emoji: '📸', bg: '#ede9fe', color: '#7c3aed' },
+  ig_toon:   { label: 'IG 툰',    emoji: '🎨', bg: '#fce7f3', color: '#be185d' },
+};
+
+const DB_STATUSES = ['Selected (1순위)', 'Reserved (2순위)', 'Hold (3순위)', 'Drop'];
+const OUTREACH_STAGES  = ['미컨택', '컨택 완료', '답변 수신', '관심', '계약 진행 중', '계약 완료', '거절'];
+const CONTRACT_STAGES  = ['미발송', '계약서 발송', '서명 완료', '거절'];
+const CONTENT_STAGES   = ['미시작', '브리핑 완료', '제작 중', '업로드 완료', '검수 완료', '승인'];
+const CATEGORIES = ['English education', 'Living abroad', 'Self improvement', 'Lifestyle / Vlog', 'Travel', '엄마표', 'Other'];
+
+const STATUS_COLORS = {
+  'Selected (1순위)':  { bg: '#dcfce7', color: '#15803d' },
+  'Reserved (2순위)':  { bg: '#fef9c3', color: '#b45309' },
+  'Hold (3순위)':      { bg: '#f3f4f6', color: '#6b7280' },
+  'Drop':              { bg: '#fee2e2', color: '#dc2626' },
+  '미컨택':            { bg: '#f3f4f6', color: '#6b7280' },
+  '컨택 완료':         { bg: '#dbeafe', color: '#1d4ed8' },
+  '답변 수신':         { bg: '#cffafe', color: '#0e7490' },
+  '관심':              { bg: '#dcfce7', color: '#15803d' },
+  '계약 진행 중':      { bg: '#fef9c3', color: '#b45309' },
+  '계약 완료':         { bg: '#dcfce7', color: '#15803d' },
+  '거절':              { bg: '#fee2e2', color: '#dc2626' },
+  '미발송':            { bg: '#f3f4f6', color: '#6b7280' },
+  '계약서 발송':       { bg: '#dbeafe', color: '#1d4ed8' },
+  '서명 완료':         { bg: '#dcfce7', color: '#15803d' },
+  '미시작':            { bg: '#f3f4f6', color: '#6b7280' },
+  '브리핑 완료':       { bg: '#ede9fe', color: '#6d28d9' },
+  '제작 중':           { bg: '#dbeafe', color: '#1d4ed8' },
+  '업로드 완료':       { bg: '#fef9c3', color: '#b45309' },
+  '검수 완료':         { bg: '#cffafe', color: '#0e7490' },
+  '승인':              { bg: '#dcfce7', color: '#15803d' },
+};
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+function sc(status) {
+  return STATUS_COLORS[status] || { bg: '#f3f4f6', color: '#374151' };
+}
+function fmt(n) {
+  const num = parseInt(String(n || '').replace(/,/g, ''));
+  if (isNaN(num) || num === 0) return '-';
+  if (num >= 10000) return (num / 10000).toFixed(1) + '만';
+  if (num >= 1000)  return (num / 1000).toFixed(1) + 'K';
+  return String(num);
+}
+function today() { return new Date().toISOString().split('T')[0]; }
+
+/* 이메일 추출: 채널 설명 텍스트에서 이메일 주소 파싱 */
+function extractEmail(text) {
+  if (!text) return '';
+  const m = text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
+  return m ? m[0] : '';
+}
+
+/* 브랜드/공기업/기관 채널 감지 — PDF 기준 Drop 사유 반영 */
+function isBrandChannel(channelName, desc) {
+  const haystack = ((channelName || '') + ' ' + (desc || '')).toLowerCase();
+  const keywords = [
+    '공기업', '기업채널', '방송국', '방송사', '뉴스tv', '뉴스 tv',
+    'official channel', '공식채널', '공식 채널', '학원', '어학원',
+    '대학교', '대학원', '재단', '협회', '기관', '정부',
+    '은행', '보험', '카드사', '증권', '투자회사',
+    ' company', ' corp', ' inc.', ' ltd',
+  ];
+  // 채널명 단독으로도 체크 (설명 없이도 걸림)
+  const name = (channelName || '').toLowerCase();
+  const nameOnly = [
+    /\b(뉴스|news)\s*(채널|channel)?\s*$/,
+    /공식\s*(유튜브|채널)/,
+    /\b(tv|방송)\s*공식/,
+  ];
+  if (nameOnly.some(p => p.test(name))) return true;
+  return keywords.some(kw => haystack.includes(kw));
+}
+
+function calcScore(inf) {
+  // 브랜드/공기업/기관 채널은 즉시 0점 반환
+  if (isBrandChannel(inf.channelName, inf._desc)) return 0;
+
+  let s = 0;
+  const cat = inf.category || '';
+
+  /* ① 카테고리 점수 (최대 30점) */
+  if (['English education', 'Living abroad', '엄마표'].includes(cat)) s += 30;
+  else if (cat === 'Self improvement') s += 22;
+  else if (cat === 'Travel') s += 18;
+  else if (cat === 'Lifestyle / Vlog') s += 12;
+  else s += 5; // Other
+
+  /* ② 구독자 수 점수 (최대 25점) — 5만~10만 구간 최적화 */
+  const fol = parseInt(String(inf.followers || '').replace(/,/g,'')) || 0;
+  if      (fol > 50000  && fol <= 100000) s += 25; // 이상적 마이크로 구간
+  else if (fol >= 10000 && fol <= 50000)  s += 20; // 소형 마이크로
+  else if (fol >= 2000  && fol < 10000)   s += 15; // 나노·소형 마이크로
+  else if (fol > 100000 && fol <= 500000) s += 12; // 중형 마이크로
+  else if (fol > 500000)                  s += 5;  // 메가 (적합성 낮음)
+  // 구독자 2,000 미만 → 0점
+
+  /* ③ 평균 조회수 / 인게이지먼트 점수 (최대 25점) */
+  const v = parseInt(String(inf.avgViews || '').replace(/,/g,'')) || 0;
+  const engRate = fol > 0 ? v / fol : 0;
+  if      (engRate >= 0.15) s += 25; // 15% 이상 — 매우 우수
+  else if (engRate >= 0.08) s += 20; // 8% 이상 — 우수
+  else if (engRate >= 0.04) s += 14; // 4% 이상 — 보통
+  else if (v >= 5000)       s += 8;  // 절대 조회수 기준
+  else if (v >= 2000)       s += 4;
+
+  /* ④ 플랫폼 점수 (최대 10점) */
+  if      (inf.platform === 'yt_long')   s += 10;
+  else if (inf.platform === 'ig_reels')  s += 8;
+  else if (inf.platform === 'yt_shorts') s += 6;
+  else                                   s += 4;
+
+  /* ⑤ 이메일 정보 보너스 (+5) — 컨택 가능성 높음 */
+  const email = inf.contactEmail || inf._email || extractEmail(inf._desc);
+  if (email) s += 5;
+
+  return Math.min(s, 100);
+}
+
+function parseCSVData(csvText) {
+  const res = Papa.parse(csvText, { skipEmptyLines: true });
+  const rows = res.data;
+  const data = [];
+  let start = 1;
+  for (let i = 0; i < Math.min(rows.length, 5); i++) {
+    if (rows[i] && rows[i].some(c => String(c).toLowerCase().includes('channel name'))) {
+      start = i + 1; break;
+    }
+  }
+  for (let i = start; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r || r.length < 6) continue;
+    const name = String(r[2] || '').trim();
+    const plat = String(r[5] || '').trim();
+    if (!name || !plat) continue;
+    const fol  = parseInt(String(r[6] || '').replace(/,/g,'')) || 0;
+    const views = parseInt(String(r[7] || '').replace(/,/g,'')) || 0;
+    data.push({
+      id: 'inf_' + i + '_' + Math.random().toString(36).slice(2,7),
+      channelName:   name,
+      handle:        String(r[3] || '').trim(),
+      platform:      plat,
+      followers:     fol,
+      avgViews:      views,
+      category:      String(r[8]  || '').trim(),
+      dbStatus:      String(r[9]  || '').trim(),
+      note:          String(r[10] || '').trim(),
+      contactEmail:  String(r[11] || '').trim(),
+      contactDM:     String(r[12] || '').trim(),
+      tier:          String(r[14] || '').trim(),
+      url:           String(r[1]  || '').trim(),
+      source:        'csv', // CSV로 추가된 인플루언서 구분
+      // workflow
+      outreachStatus: '미컨택', outreachDate: '', outreachNote: '',
+      contractStatus: '미발송', contractDate: '', contractAmount: '', contractNote: '',
+      contentStatus:  '미시작', contentUrl: '', contentUploadDate: '', contentNote: '',
+      views: '', clicks: '', conversions: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+  return data;
+}
+
+/* ============================================================
+   MINI COMPONENTS
+   ============================================================ */
+function Badge({ label, size = 'sm' }) {
+  const { bg, color } = sc(label);
+  return (
+    <span className="badge" style={{ background: bg, color, fontSize: size === 'xs' ? 10 : 11 }}>
+      {label}
+    </span>
+  );
+}
+function PBadge({ platform }) {
+  const p = PLATFORMS[platform] || { label: platform, emoji: '📱', bg: '#f3f4f6', color: '#374151' };
+  return (
+    <span className="badge" style={{ background: p.bg, color: p.color }}>
+      {p.emoji} {p.label}
+    </span>
+  );
+}
+function ScoreBar({ score }) {
+  const color = score >= 70 ? '#16a34a' : score >= 50 ? '#ca8a04' : '#dc2626';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div className="score-bar">
+        <div style={{ height: '100%', width: score + '%', background: color, borderRadius: 3 }} />
+      </div>
+      <span style={{ fontSize: 12, fontWeight: 600, color }}>{score}</span>
+    </div>
+  );
+}
+function StageSelect({ value, options, onChange, small }) {
+  const { bg, color } = sc(value);
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)}
+      style={{ fontSize: small ? 11 : 12, padding: small ? '3px 6px' : '5px 8px', border: `1px solid ${bg}`,
+        borderRadius: 7, background: bg, color, fontWeight: 600, cursor: 'pointer' }}>
+      {options.map(o => <option key={o} value={o}>{o}</option>)}
+    </select>
+  );
+}
+
+/* ============================================================
+   HOOK: localStorage
+   ============================================================ */
+function useLS(key, init) {
+  const [val, setVal] = useState(() => {
+    try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : init; } catch { return init; }
+  });
+  const set = useCallback(v => {
+    setVal(prev => {
+      const next = typeof v === 'function' ? v(prev) : v;
+      try { localStorage.setItem(key, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  }, [key]);
+  return [val, set];
+}
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+function Sidebar({ view, setView, stats }) {
+  const items = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'db',        label: 'Influencer DB',  count: stats.total },
+    { id: 'campaigns', label: 'Campaigns',       count: stats.campaignCount },
+    { id: 'sourcing',  label: 'YT Sourcing' },
+    { id: 'outreach',  label: 'ReachOut',        count: stats.outreachActive },
+    { id: 'contract',  label: 'Contract',        count: stats.contracted },
+    { id: 'content',   label: 'QA',              count: stats.contentActive },
+    { id: 'analytics', label: 'Results' },
+  ];
+  return (
+    <div style={{ width: 230, minHeight: '100vh', background: '#0f172a', position: 'fixed', left: 0, top: 0, display: 'flex', flexDirection: 'column', zIndex: 30 }}>
+      <div style={{ padding: '22px 18px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src={SPEAK_LOGO} alt="Speak" style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
+          <div>
+            <div style={{ color: 'white', fontWeight: 700, fontSize: 15 }}>Speak</div>
+            <div style={{ color: '#475569', fontSize: 11 }}>Influencer Hub</div>
+          </div>
+        </div>
+      </div>
+      <nav style={{ padding: '12px 10px', flex: 1 }}>
+        {items.map(item => (
+          <button key={item.id} onClick={() => setView(item.id)}
+            className={'nav-item' + (view === item.id ? ' active' : '')}>
+            <span>{item.label}</span>
+            {item.count > 0 && (
+              <span style={{ background: view === item.id ? '#F97316' : '#1e293b', color: view === item.id ? 'white' : '#64748b', padding: '1px 7px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
+                {item.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </nav>
+      <div style={{ padding: '14px 18px', borderTop: '1px solid rgba(255,255,255,0.07)', fontSize: 11, color: '#334155' }}>
+        Speak Partnerships Team
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+function Dashboard({ influencers }) {
+  const selected  = influencers.filter(i => i.dbStatus === 'Selected (1순위)').length;
+  const contacted = influencers.filter(i => i.outreachStatus !== '미컨택').length;
+  const contracted= influencers.filter(i => i.contractStatus === '서명 완료').length;
+  const uploaded  = influencers.filter(i => ['업로드 완료','검수 완료','승인'].includes(i.contentStatus)).length;
+
+  const platSel = {}, catSel = {};
+  influencers.filter(i => i.dbStatus === 'Selected (1순위)').forEach(i => {
+    const p = PLATFORMS[i.platform]?.label || i.platform;
+    platSel[p] = (platSel[p] || 0) + 1;
+    const c = i.category || '미분류';
+    catSel[c]  = (catSel[c]  || 0) + 1;
+  });
+
+  const cards = [
+    { label: '전체 리스트업', v: influencers.length, color: '#6366f1', icon: '👥', sub: '등록된 채널 수' },
+    { label: 'Selected',      v: selected,           color: '#16a34a', icon: '✅', sub: '1순위 선정' },
+    { label: '리치아웃 진행', v: contacted,          color: '#2563eb', icon: '📤', sub: '컨택 이상' },
+    { label: '계약 완료',     v: contracted,          color: '#d97706', icon: '📄', sub: '서명 완료' },
+  ];
+
+  const pipeline = [
+    { label: '리스트업', v: influencers.length, c: '#6366f1' },
+    { label: 'Selected', v: selected,           c: '#16a34a' },
+    { label: '리치아웃',  v: contacted,          c: '#2563eb' },
+    { label: '계약',     v: contracted,          c: '#d97706' },
+    { label: '콘텐츠',   v: uploaded,            c: '#7c3aed' },
+  ];
+
+  return (
+    <div style={{ padding: 28 }}>
+      <div className="section-title">대시보드</div>
+      <div className="section-sub">캠페인 전체 현황을 한눈에</div>
+
+      {/* stat cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
+        {cards.map(c => (
+          <div key={c.label} className="card" style={{ padding: '20px 22px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>{c.label}</div>
+                <div className="stat-number" style={{ color: c.color }}>{c.v}</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{c.sub}</div>
+              </div>
+              <span style={{ fontSize: 26 }}>{c.icon}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* pipeline */}
+      <div className="card" style={{ padding: '20px 22px', marginBottom: 20 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 14 }}>📊 캠페인 파이프라인</div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {pipeline.map((s, idx) => (
+            <React.Fragment key={s.label}>
+              <div className="progress-step">
+                <div style={{ fontSize: 22, fontWeight: 700, color: s.c }}>{s.v}</div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>{s.label}</div>
+              </div>
+              {idx < pipeline.length - 1 && <span style={{ color: '#d1d5db', fontSize: 18, flexShrink: 0 }}>→</span>}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+
+      {/* breakdown charts */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        {[
+          { title: '📺 플랫폼별 Selected', data: platSel, color: '#6366f1', total: selected },
+          { title: '📂 카테고리별 Selected', data: catSel, color: '#10b981', total: selected },
+        ].map(chart => (
+          <div key={chart.title} className="card" style={{ padding: '18px 22px' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 14 }}>{chart.title}</div>
+            {Object.entries(chart.data).sort((a,b) => b[1]-a[1]).slice(0,6).map(([k,v]) => (
+              <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <div style={{ fontSize: 12, color: '#374151', width: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 0 }}>{k}</div>
+                <div style={{ flex: 1, background: '#f1f5f9', borderRadius: 4, height: 7, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: chart.color, width: `${chart.total ? (v/chart.total)*100 : 0}%`, transition: 'width 0.5s', borderRadius: 4 }} />
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', width: 28, textAlign: 'right', flexShrink: 0 }}>{v}</div>
+              </div>
+            ))}
+            {Object.keys(chart.data).length === 0 && <div style={{ color: '#94a3b8', fontSize: 12 }}>데이터 없음</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   INFLUENCER DB
+   ============================================================ */
+function InfluencerDB({ influencers, updateInf, onImport, onDelete, onBulkDelete }) {
+  const [dbSubTab, setDbSubTab] = useState('platform'); // 'platform' | 'csv'
+  const [platformSearch, setPlatformSearch] = useState('');
+  const [csvSearch, setCsvSearch] = useState('');
+  const [fPlatform, setFPlatform] = useState('');
+  const [fCategory, setFCategory] = useState('');
+  const [fStatus, setFStatus]   = useState('');
+  const [fTier, setFTier]       = useState('');
+  const [sortBy, setSortBy]     = useState('score');
+  const [sortDir, setSortDir]   = useState('desc');
+  const [detailId, setDetailId] = useState(null);
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [emailDraft, setEmailDraft] = useState('');
+  /* ── 인라인 편집 ── */
+  const [editingInfId, setEditingInfId] = useState(null);
+  const [editDraft, setEditDraft] = useState({});
+  /* ── 다중 선택 삭제 ── */
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [showImport, setShowImport] = useState(false);
+  const [importMode, setImportMode] = useState('file'); // file | url
+  const [sheetsUrl, setSheetsUrl]   = useState('');
+  const [importLoading, setImportLoading] = useState(false);
+  const [fileImportName, setFileImportName] = useState('');
+
+  // 소싱 인원: platform에서 추가 (source 없거나 'platform')
+  // 외부 추가 인원: CSV로 추가 (source === 'csv')
+  const platformInfs = useMemo(() => influencers.filter(i => !i.source || i.source === 'platform'), [influencers]);
+  const csvInfs      = useMemo(() => influencers.filter(i => i.source === 'csv'), [influencers]);
+
+  function applySort(r) {
+    return r.sort((a, b) => {
+      if (sortBy === 'name') return sortDir === 'asc' ? a.channelName.localeCompare(b.channelName) : b.channelName.localeCompare(a.channelName);
+      const va = sortBy === 'score' ? calcScore(a) : sortBy === 'followers' ? (parseInt(String(a.followers).replace(/,/g,''))||0) : (parseInt(String(a.avgViews).replace(/,/g,''))||0);
+      const vb = sortBy === 'score' ? calcScore(b) : sortBy === 'followers' ? (parseInt(String(b.followers).replace(/,/g,''))||0) : (parseInt(String(b.avgViews).replace(/,/g,''))||0);
+      return sortDir === 'desc' ? vb - va : va - vb;
+    });
+  }
+
+  function applyCommonFilters(r) {
+    if (fPlatform) r = r.filter(i => i.platform === fPlatform);
+    if (fCategory) r = r.filter(i => i.category === fCategory);
+    if (fStatus)   r = r.filter(i => i.dbStatus === fStatus);
+    if (fTier)     r = r.filter(i => i.tier === fTier);
+    return r;
+  }
+
+  const filteredPlatform = useMemo(() => {
+    let r = [...platformInfs];
+    if (platformSearch) r = r.filter(i => i.channelName.toLowerCase().includes(platformSearch.toLowerCase()) || (i.handle || '').toLowerCase().includes(platformSearch.toLowerCase()) || (i.category || '').toLowerCase().includes(platformSearch.toLowerCase()));
+    r = applyCommonFilters(r);
+    return applySort(r);
+  }, [platformInfs, platformSearch, fPlatform, fCategory, fStatus, fTier, sortBy, sortDir]);
+
+  const filteredCsv = useMemo(() => {
+    let r = [...csvInfs];
+    if (csvSearch) r = r.filter(i => i.channelName.toLowerCase().includes(csvSearch.toLowerCase()) || (i.handle || '').toLowerCase().includes(csvSearch.toLowerCase()) || (i.category || '').toLowerCase().includes(csvSearch.toLowerCase()));
+    r = applyCommonFilters(r);
+    return applySort(r);
+  }, [csvInfs, csvSearch, fPlatform, fCategory, fStatus, fTier, sortBy, sortDir]);
+
+  // 현재 서브탭 기준 filtered (exportCSV 등 호환용)
+  const filtered = dbSubTab === 'platform' ? filteredPlatform : filteredCsv;
+
+  const detail = detailId ? influencers.find(i => i.id === detailId) : null;
+
+  /* ── 인라인 편집 함수 ── */
+  function startEdit(inf) {
+    setEditingInfId(inf.id);
+    setEditDraft({
+      channelName: inf.channelName || '',
+      handle:      inf.handle || '',
+      platform:    inf.platform || '',
+      followers:   inf.followers || '',
+      avgViews:    inf.avgViews || '',
+      category:    inf.category || '',
+      dbStatus:    inf.dbStatus || '',
+      tier:        inf.tier || '',
+      url:         inf.url || '',
+      contactEmail: inf.contactEmail || '',
+      note:        inf.note || '',
+    });
+  }
+  function saveEdit(id) {
+    updateInf(id, {
+      channelName:  editDraft.channelName,
+      handle:       editDraft.handle,
+      platform:     editDraft.platform,
+      followers:    parseInt(String(editDraft.followers).replace(/,/g,'')) || 0,
+      avgViews:     parseInt(String(editDraft.avgViews).replace(/,/g,'')) || 0,
+      category:     editDraft.category,
+      dbStatus:     editDraft.dbStatus,
+      tier:         editDraft.tier,
+      url:          editDraft.url,
+      contactEmail: editDraft.contactEmail,
+      note:         editDraft.note,
+    });
+    setEditingInfId(null);
+    setEditDraft({});
+  }
+  function cancelEdit() { setEditingInfId(null); setEditDraft({}); }
+
+  /* ── 다중 선택/삭제 함수 ── */
+  function toggleSelect(id) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  function toggleSelectAll(list) {
+    const allIds = new Set(list.map(i => i.id));
+    const allSelected = list.every(i => selectedIds.has(i.id));
+    setSelectedIds(allSelected ? new Set() : allIds);
+  }
+  function exitSelectMode() { setIsSelectMode(false); setSelectedIds(new Set()); }
+  function confirmBulkDelete() {
+    if (!selectedIds.size) return;
+    if (!window.confirm(selectedIds.size + '명의 인플루언서를 삭제할까요? 이 작업은 되돌릴 수 없습니다.')) return;
+    onBulkDelete(selectedIds);
+    exitSelectMode();
+    if (detailId && selectedIds.has(detailId)) setDetailId(null);
+  }
+
+  function doSort(col) {
+    if (sortBy === col) setSortDir(d => d === 'desc' ? 'asc' : 'desc');
+    else { setSortBy(col); setSortDir('desc'); }
+  }
+
+  async function handleUrlImport() {
+    if (!sheetsUrl.trim()) { alert('URL을 입력해주세요.'); return; }
+    setImportLoading(true);
+    try {
+      let url = sheetsUrl.trim();
+      // Extract spreadsheet ID and build gviz URL
+      const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+      if (!match) throw new Error('올바른 Google Sheets URL이 아닙니다.');
+      const id = match[1];
+      const csvUrl = `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=influencers_list`;
+      const resp = await fetch(csvUrl, { credentials: 'include' });
+      if (!resp.ok) throw new Error('시트를 불러올 수 없습니다. 로그인 상태를 확인해주세요.');
+      const text = await resp.text();
+      const data = parseCSVData(text);
+      if (!data.length) throw new Error('데이터가 없거나 형식이 맞지 않습니다.');
+      onImport(data);
+      setShowImport(false); setSheetsUrl('');
+      alert(`✅ ${data.length}개 인플루언서 데이터를 Google Sheets에서 불러왔습니다.`);
+    } catch(e) {
+      alert('오류: ' + e.message + '\n\n붙여넣기 방식을 이용해주세요.');
+    }
+    setImportLoading(false);
+  }
+
+  function handleFileImport(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    setFileImportName(file.name);
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const text = ev.target.result;
+      const data = parseCSVData(text);
+      if (!data.length) { alert('파싱된 데이터가 없습니다. 예시 CSV 형식을 확인해주세요.'); return; }
+      onImport(data);
+      setShowImport(false);
+      setFileImportName('');
+      alert('\u2705 ' + data.length + '\uac1c \uc778\ud50c\ub8e8\uc5b8\uc11c \ub370\uc774\ud130\ub97c \ubd88\ub7ec\uc654\uc2b5\ub2c8\ub2e4.');
+    };
+    reader.readAsText(file, 'UTF-8');
+  }
+
+  function exportCSV() {
+    const hdr = ['채널명','핸들','플랫폼','팔로워','평균뷰','카테고리','DB상태','스코어','리치아웃','계약','콘텐츠','이메일','노트'];
+    const rows = filtered.map(i => [i.channelName,i.handle,i.platform,i.followers,i.avgViews,i.category,i.dbStatus,calcScore(i),i.outreachStatus,i.contractStatus,i.contentStatus,i.contactEmail,i.note]);
+    const csv = [hdr,...rows].map(r => r.map(c => `"${c||''}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+    a.download = `speak_influencers_${today()}.csv`;
+    a.click();
+  }
+
+  function downloadSampleCSV() {
+    // parseCSVData는 위치 기반(인덱스) 파싱: r[1]=URL, r[2]=채널명, r[3]=핸들, r[5]=플랫폼,
+    // r[6]=팔로워, r[7]=평균뷰, r[8]=카테고리, r[9]=DB상태, r[10]=노트, r[11]=이메일, r[12]=DM, r[14]=티어
+    const hdr = ['번호','URL','Channel Name','핸들','구분','플랫폼','팔로워','평균뷰','카테고리','DB상태','노트','이메일','DM','비고','티어'];
+    const sample = ['1','https://www.youtube.com/@예시채널','예시채널','@예시핸들','','YouTube','150000','20000','뷰티','활성','메모 입력','contact@example.com','','','Macro'];
+    const csv = [hdr, sample].map(r => r.map(c => '"' + c + '"').join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = 'speak_influencer_sample.csv';
+    a.click();
+  }
+
+  const SortTh = ({ col, label }) => (
+    <th style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => doSort(col)}>
+      {label} {sortBy === col ? (sortDir === 'desc' ? '↓' : '↑') : ''}
+    </th>
+  );
+
+  // 테이블 행 렌더 함수 (플랫폼/외부 탭 공용)
+  function renderInfRows(list) {
+    return list.map((inf, idx) => {
+      const isEditing = editingInfId === inf.id;
+      const isChecked = selectedIds.has(inf.id);
+      const rowBg = isEditing ? '#fffbeb' : isChecked ? '#fef3c7' : detailId === inf.id ? '#f0f9ff' : undefined;
+
+      if (isEditing) {
+        /* ── 편집 중인 행: 인라인 input 폼 ── */
+        const inp = (field, placeholder, type) => (
+          <input type={type || 'text'} value={editDraft[field]}
+            onChange={e => setEditDraft(prev => ({ ...prev, [field]: e.target.value }))}
+            placeholder={placeholder}
+            style={{ width: '100%', fontSize: 11, padding: '3px 6px', minWidth: 0 }} />
+        );
+        return (
+          <tr key={inf.id} style={{ background: rowBg }}>
+            {isSelectMode && <td />}
+            <td style={{ color: '#94a3b8', fontSize: 12 }}>{idx + 1}</td>
+            <td style={{ minWidth: 140 }}>
+              {inp('channelName', '채널명')}
+              {inp('handle', '핸들')}
+              {inp('url', 'URL')}
+            </td>
+            <td style={{ minWidth: 90 }}>
+              <select value={editDraft.platform} onChange={e => setEditDraft(p => ({ ...p, platform: e.target.value }))}
+                style={{ width: '100%', fontSize: 11 }}>
+                {Object.keys(PLATFORMS).map(k => <option key={k} value={k}>{PLATFORMS[k].label}</option>)}
+              </select>
+            </td>
+            <td>{inp('followers', '팔로워', 'number')}</td>
+            <td>{inp('avgViews', '평균뷰', 'number')}</td>
+            <td style={{ minWidth: 100 }}>
+              <select value={editDraft.category} onChange={e => setEditDraft(p => ({ ...p, category: e.target.value }))}
+                style={{ width: '100%', fontSize: 11 }}>
+                <option value="">카테고리</option>
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </td>
+            <td style={{ minWidth: 100 }}>
+              <select value={editDraft.dbStatus} onChange={e => setEditDraft(p => ({ ...p, dbStatus: e.target.value }))}
+                style={{ width: '100%', fontSize: 11 }}>
+                {DB_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </td>
+            <td><ScoreBar score={calcScore(inf)} /></td>
+            <td><StageSelect value={inf.outreachStatus} options={OUTREACH_STAGES} onChange={v => updateInf(inf.id, { outreachStatus: v })} small /></td>
+            <td><StageSelect value={inf.contractStatus} options={CONTRACT_STAGES} onChange={v => updateInf(inf.id, { contractStatus: v })} small /></td>
+            <td><StageSelect value={inf.contentStatus} options={CONTENT_STAGES} onChange={v => updateInf(inf.id, { contentStatus: v })} small /></td>
+            <td>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button onClick={() => saveEdit(inf.id)}
+                  style={{ background: '#16a34a', color: 'white', border: 'none', padding: '4px 10px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                  ✅ 완료
+                </button>
+                <button onClick={cancelEdit}
+                  style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0', padding: '4px 8px', borderRadius: 7, fontSize: 12, cursor: 'pointer' }}>
+                  취소
+                </button>
+              </div>
+            </td>
+          </tr>
+        );
+      }
+
+      /* ── 일반 행 ── */
+      return (
+        <tr key={inf.id} style={{ background: rowBg }}>
+          {isSelectMode && (
+            <td style={{ textAlign: 'center' }}>
+              <input type="checkbox" checked={isChecked} onChange={() => toggleSelect(inf.id)}
+                style={{ width: 15, height: 15, cursor: 'pointer' }} />
+            </td>
+          )}
+          <td style={{ color: '#94a3b8', fontSize: 12 }}>{idx + 1}</td>
+          <td>
+            <div style={{ fontWeight: 500, color: '#0f172a' }}>
+              {inf.url
+                ? <a href={inf.url} target="_blank" rel="noopener noreferrer"
+                    style={{ color: 'inherit', textDecoration: 'none', cursor: 'pointer' }}
+                    onClick={e => e.stopPropagation()}>
+                    {inf.channelName}
+                  </a>
+                : inf.channelName}
+            </div>
+            <div style={{ color: '#94a3b8', fontSize: 11 }}>{inf.handle || '—'}</div>
+          </td>
+          <td><PBadge platform={inf.platform} /></td>
+          <td style={{ fontWeight: 500 }}>{fmt(inf.followers)}</td>
+          <td style={{ color: '#64748b' }}>{fmt(inf.avgViews)}</td>
+          <td style={{ fontSize: 12, color: '#64748b', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inf.category || '—'}</td>
+          <td><Badge label={inf.dbStatus} /></td>
+          <td><ScoreBar score={calcScore(inf)} /></td>
+          <td><StageSelect value={inf.outreachStatus} options={OUTREACH_STAGES} onChange={v => updateInf(inf.id, { outreachStatus: v })} small /></td>
+          <td><StageSelect value={inf.contractStatus} options={CONTRACT_STAGES} onChange={v => updateInf(inf.id, { contractStatus: v })} small /></td>
+          <td><StageSelect value={inf.contentStatus} options={CONTENT_STAGES} onChange={v => updateInf(inf.id, { contentStatus: v })} small /></td>
+          <td>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button onClick={() => startEdit(inf)}
+                style={{ background: '#f8fafc', color: '#374151', border: '1px solid #e5e7eb', padding: '4px 8px', borderRadius: 7, fontSize: 12, cursor: 'pointer' }}>
+                ✏️
+              </button>
+              <button onClick={() => setDetailId(detailId === inf.id ? null : inf.id)}
+                style={{ background: detailId === inf.id ? '#e0e7ff' : '#f8fafc', color: detailId === inf.id ? '#6366f1' : '#374151', border: '1px solid ' + (detailId === inf.id ? '#c7d2fe' : '#e5e7eb'), padding: '4px 10px', borderRadius: 7, fontSize: 12, cursor: 'pointer' }}>
+                상세
+              </button>
+            </div>
+          </td>
+        </tr>
+      );
+    });
+  }
+
+  function renderInfTable(list, emptyMsg) {
+    if (!list.length) return (
+      <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8', fontSize: 13 }}>{emptyMsg}</div>
+    );
+    const allChecked = list.length > 0 && list.every(i => selectedIds.has(i.id));
+    return (
+      <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '60vh' }}>
+        <table>
+          <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#f8fafc' }}>
+            <tr>
+              {isSelectMode && (
+                <th style={{ width: 36, textAlign: 'center' }}>
+                  <input type="checkbox" checked={allChecked} onChange={() => toggleSelectAll(list)}
+                    style={{ width: 15, height: 15, cursor: 'pointer' }} />
+                </th>
+              )}
+              <th style={{width:40}}>#</th>
+              <SortTh col="name" label="채널명" />
+              <th>플랫폼</th>
+              <SortTh col="followers" label="팔로워" />
+              <SortTh col="views" label="평균뷰" />
+              <th>카테고리</th>
+              <th>DB 상태</th>
+              <SortTh col="score" label="스코어" />
+              <th>리치아웃</th>
+              <th>계약</th>
+              <th>콘텐츠</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>{renderInfRows(list)}</tbody>
+        </table>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: 28, paddingRight: detail ? 420 : 28 }}>
+      {/* 헤더 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+        <div>
+          <div className="section-title">인플루언서 DB</div>
+          <div className="section-sub">
+            플랫폼 소싱 {platformInfs.length}명 · 외부 추가 {csvInfs.length}명 (전체 {influencers.length}명)
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
+          {isSelectMode ? (
+            <>
+              <span style={{ fontSize: 12, color: '#64748b', alignSelf: 'center' }}>
+                {selectedIds.size}명 선택됨
+              </span>
+              <button onClick={confirmBulkDelete}
+                style={{ background: selectedIds.size ? '#ef4444' : '#e2e8f0', color: selectedIds.size ? 'white' : '#94a3b8',
+                  border: 'none', padding: '7px 14px', borderRadius: 8, fontSize: 13, cursor: selectedIds.size ? 'pointer' : 'not-allowed', fontWeight: 600 }}>
+                🗑 {selectedIds.size}명 삭제
+              </button>
+              <button className="btn btn-secondary" onClick={exitSelectMode}>취소</button>
+            </>
+          ) : (
+            <>
+              <button className="btn btn-secondary" onClick={exportCSV}>⬇ 내보내기</button>
+              <button onClick={() => { setIsSelectMode(true); setSelectedIds(new Set()); cancelEdit(); }}
+                style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5', padding: '7px 14px', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>
+                ☑ 선택 삭제
+              </button>
+              <button className="btn btn-primary" onClick={() => setShowImport(true)}>⬆ CSV 불러오기</button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* 공통 필터 (플랫폼/카테고리/상태) */}
+      <div className="filter-bar">
+        <select value={fPlatform} onChange={e=>setFPlatform(e.target.value)}>
+          <option value="">전체 플랫폼</option>
+          {Object.entries(PLATFORMS).map(([k,v]) => <option key={k} value={k}>{v.emoji} {v.label}</option>)}
+        </select>
+        <select value={fCategory} onChange={e=>setFCategory(e.target.value)}>
+          <option value="">전체 카테고리</option>
+          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={fStatus} onChange={e=>setFStatus(e.target.value)}>
+          <option value="">전체 상태</option>
+          {DB_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        {(fPlatform||fCategory||fStatus||fTier) &&
+          <button className="btn btn-secondary" onClick={()=>{setFPlatform('');setFCategory('');setFStatus('');setFTier('');}}>✕ 필터 초기화</button>}
+      </div>
+
+      {/* 서브탭 */}
+      <div style={{ display: 'flex', gap: 0, marginBottom: 0, borderBottom: '2px solid #e5e7eb' }}>
+        {[
+          { key: 'platform', label: '🎯 플랫폼 내 소싱 인원', count: platformInfs.length },
+          { key: 'csv',      label: '📥 외부 추가 인원',       count: csvInfs.length },
+        ].map(tab => (
+          <button key={tab.key} onClick={() => setDbSubTab(tab.key)}
+            style={{ padding: '10px 22px', fontSize: 13, fontWeight: dbSubTab === tab.key ? 700 : 400,
+              background: 'none', border: 'none', cursor: 'pointer',
+              borderBottom: dbSubTab === tab.key ? '2px solid #6366f1' : '2px solid transparent',
+              color: dbSubTab === tab.key ? '#6366f1' : '#64748b',
+              marginBottom: -2 }}>
+            {tab.label}
+            <span style={{ marginLeft: 6, background: dbSubTab === tab.key ? '#e0e7ff' : '#f1f5f9',
+              color: dbSubTab === tab.key ? '#6366f1' : '#94a3b8',
+              borderRadius: 10, padding: '1px 8px', fontSize: 11, fontWeight: 600 }}>
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* 서브탭 컨텐츠 */}
+      <div className="card" style={{ overflow: 'hidden', borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
+        {/* 탭별 검색창 */}
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>
+          {dbSubTab === 'platform' ? (
+            <input
+              placeholder="🔍 채널명 / 핸들 / 카테고리 검색"
+              value={platformSearch}
+              onChange={e => setPlatformSearch(e.target.value)}
+              style={{ width: '100%', fontSize: 13 }}
+            />
+          ) : (
+            <input
+              placeholder="🔍 채널명 / 핸들 / 카테고리 검색"
+              value={csvSearch}
+              onChange={e => setCsvSearch(e.target.value)}
+              style={{ width: '100%', fontSize: 13 }}
+            />
+          )}
+        </div>
+
+        {/* 탭별 테이블 */}
+        {dbSubTab === 'platform'
+          ? renderInfTable(filteredPlatform, platformInfs.length === 0
+              ? '플랫폼 소싱으로 추가된 인플루언서가 없습니다. YT Sourcing 탭에서 채널을 DB에 추가해보세요!'
+              : '검색 결과가 없습니다.')
+          : renderInfTable(filteredCsv, csvInfs.length === 0
+              ? '외부 CSV로 추가된 인플루언서가 없습니다.'
+              : '검색 결과가 없습니다.')}
+      </div>
+
+      {/* Import Modal */}
+      {showImport && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowImport(false)}>
+          <div className="modal">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700 }}>📥 인플루언서 데이터 불러오기</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button onClick={downloadSampleCSV} style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 12px', fontSize: 12, color: '#475569', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}>📄 예시 CSV 다운로드</button>
+                <button onClick={() => setShowImport(false)} style={{ background: 'none', border: 'none', fontSize: 20, color: '#94a3b8', cursor: 'pointer' }}>✕</button>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              <button className={'btn ' + (importMode==='file' ? 'btn-primary' : 'btn-secondary')} onClick={() => { setImportMode('file'); setFileImportName(''); }}>📁 파일 업로드</button>
+              <button className={'btn ' + (importMode==='url'  ? 'btn-primary' : 'btn-secondary')} onClick={() => setImportMode('url')}>🔗 Sheets URL</button>
+            </div>
+            {importMode === 'file' ? (
+              <>
+                <p style={{ color: '#64748b', fontSize: 13, marginBottom: 16, lineHeight: 1.6 }}>
+                  위의 <b>📄 예시 CSV 다운로드</b>로 받은 파일을 작성한 뒤 업로드하세요.<br />
+                  <b>.csv</b> 파일만 지원합니다.
+                </p>
+                <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '2px dashed #cbd5e1', borderRadius: 12, padding: '32px 20px', cursor: 'pointer', background: fileImportName ? '#f0fdf4' : '#f8fafc', transition: 'background 0.15s' }}>
+                  <input type="file" accept=".csv" style={{ display: 'none' }} onChange={handleFileImport} />
+                  <span style={{ fontSize: 36, marginBottom: 10 }}>{fileImportName ? '✅' : '📂'}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: fileImportName ? '#16a34a' : '#475569', marginBottom: 4 }}>
+                    {fileImportName ? fileImportName : 'CSV 파일 선택'}
+                  </span>
+                  <span style={{ fontSize: 12, color: '#94a3b8' }}>
+                    {fileImportName ? '파일이 선택되었습니다' : '클릭하여 파일 선택'}
+                  </span>
+                </label>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+                  <button className="btn btn-secondary" onClick={() => { setShowImport(false); setFileImportName(''); }}>취소</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p style={{ color: '#64748b', fontSize: 13, marginBottom: 12, lineHeight: 1.6 }}>
+                  같은 Chrome 계정으로 로그인된 상태에서 Google Sheets URL을 입력하면<br />
+                  자동으로 데이터를 가져옵니다.
+                </p>
+                <input value={sheetsUrl} onChange={e => setSheetsUrl(e.target.value)}
+                  placeholder="https://docs.google.com/spreadsheets/d/..." style={{ width: '100%', marginBottom: 14 }} />
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button className="btn btn-secondary" onClick={() => setShowImport(false)}>취소</button>
+                  <button className="btn btn-primary" onClick={handleUrlImport} disabled={importLoading}>
+                    {importLoading ? '불러오는 중...' : '가져오기'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Side Detail Panel */}
+      {detail && (
+        <div className="side-panel">
+          <div style={{ padding: '18px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'white', zIndex: 1 }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>{detail.channelName}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{detail.handle}</div>
+            </div>
+            <button onClick={() => { setDetailId(null); setEditingEmail(false); }} style={{ background: '#f1f5f9', border: 'none', width: 28, height: 28, borderRadius: 8, cursor: 'pointer', fontSize: 14, color: '#64748b' }}>✕</button>
+          </div>
+          <div style={{ padding: '18px 20px' }}>
+            {/* Info */}
+            <div style={{ background: '#f8fafc', borderRadius: 10, padding: 14, marginBottom: 14 }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                <PBadge platform={detail.platform} />
+                <Badge label={detail.dbStatus} />
+                {detail.tier && <span className="badge" style={{ background: '#fef9c3', color: '#92400e' }}>{detail.tier}</span>}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 12 }}>
+                <div><div style={{ color: '#94a3b8', fontSize: 10, marginBottom: 2 }}>팔로워</div><strong>{fmt(detail.followers)}</strong></div>
+                <div><div style={{ color: '#94a3b8', fontSize: 10, marginBottom: 2 }}>평균뷰</div><strong>{fmt(detail.avgViews)}</strong></div>
+                <div><div style={{ color: '#94a3b8', fontSize: 10, marginBottom: 2 }}>스코어</div><strong style={{ color: calcScore(detail) >= 70 ? '#16a34a' : '#ca8a04' }}>{calcScore(detail)}점</strong></div>
+              </div>
+              {detail.url && (
+                <a href={detail.url} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'block', marginTop: 10, fontSize: 12, color: '#6366f1', textDecoration: 'none', background: '#eef2ff', padding: '6px 10px', borderRadius: 7 }}>
+                  🔗 채널 바로가기
+                </a>
+              )}
+            </div>
+            {/* Contact */}
+            <div style={{ marginBottom: 14, fontSize: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <div style={{ fontWeight: 600, color: '#374151' }}>📬 연락처</div>
+                {!editingEmail && (
+                  <button
+                    onClick={() => { setEmailDraft(detail.contactEmail || extractEmail(detail.note || '') || ''); setEditingEmail(true); }}
+                    style={{ fontSize: 10, padding: '2px 9px', borderRadius: 6, border: '1px solid #e2e8f0',
+                      background: 'white', cursor: 'pointer', color: '#6366f1', fontWeight: 600 }}>
+                    ✏️ {detail.contactEmail ? '수정' : '입력'}
+                  </button>
+                )}
+              </div>
+
+              {/* 이메일 직접 입력 폼 */}
+              {editingEmail ? (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input
+                    autoFocus
+                    value={emailDraft}
+                    onChange={e => setEmailDraft(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') { updateInf(detail.id, { contactEmail: emailDraft }); setEditingEmail(false); }
+                      if (e.key === 'Escape') setEditingEmail(false);
+                    }}
+                    placeholder="이메일 주소 입력"
+                    style={{ flex: 1, fontSize: 12, padding: '5px 9px' }}
+                  />
+                  <button
+                    onClick={() => { updateInf(detail.id, { contactEmail: emailDraft }); setEditingEmail(false); }}
+                    style={{ fontSize: 11, padding: '5px 10px', borderRadius: 7, border: 'none',
+                      background: '#6366f1', color: 'white', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    저장
+                  </button>
+                  <button
+                    onClick={() => setEditingEmail(false)}
+                    style={{ fontSize: 11, padding: '5px 8px', borderRadius: 7, border: '1px solid #e2e8f0',
+                      background: 'white', color: '#64748b', cursor: 'pointer' }}>
+                    취소
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {(detail.contactEmail || extractEmail(detail.note || '')) ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6,
+                      background: '#ecfdf5', border: '1px solid #6ee7b7',
+                      borderRadius: 7, padding: '5px 10px', color: '#065f46', fontWeight: 600 }}>
+                      📧 {detail.contactEmail || extractEmail(detail.note || '')}
+                      <button
+                        onClick={() => navigator.clipboard.writeText(detail.contactEmail || extractEmail(detail.note || ''))}
+                        style={{ marginLeft: 'auto', fontSize: 10, padding: '2px 7px', borderRadius: 5,
+                          border: '1px solid #6ee7b7', background: 'white', cursor: 'pointer', color: '#065f46' }}>
+                        복사
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ color: '#9ca3af' }}>등록된 연락처 없음</div>
+                  )}
+                  {detail.contactDM && <div style={{ color: '#4b5563' }}>📱 {detail.contactDM}</div>}
+                </div>
+              )}
+            </div>
+            {/* DB note */}
+            {detail.note && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>📝 원본 노트</div>
+                <div style={{ background: '#fffbeb', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: '#92400e', border: '1px solid #fde68a' }}>{detail.note}</div>
+              </div>
+            )}
+            {/* Workflow selects */}
+            {[
+              { label: '📤 리치아웃 상태', field: 'outreachStatus', options: OUTREACH_STAGES },
+              { label: '📄 계약 상태',     field: 'contractStatus', options: CONTRACT_STAGES },
+              { label: '🎬 콘텐츠 상태',   field: 'contentStatus',  options: CONTENT_STAGES },
+            ].map(item => (
+              <div key={item.field} style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>{item.label}</label>
+                <StageSelect value={detail[item.field]} options={item.options} onChange={v => updateInf(detail.id, { [item.field]: v })} />
+              </div>
+            ))}
+            {/* Contract amount */}
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>💰 계약 단가</label>
+              <input value={detail.contractAmount || ''} onChange={e => updateInf(detail.id, { contractAmount: e.target.value })} placeholder="예: 300,000원" style={{ width: '100%' }} />
+            </div>
+            {/* Content URL */}
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>🔗 콘텐츠 URL</label>
+              <input value={detail.contentUrl || ''} onChange={e => updateInf(detail.id, { contentUrl: e.target.value })} placeholder="업로드된 콘텐츠 링크" style={{ width: '100%' }} />
+            </div>
+            {/* Ops note */}
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>💬 운영 메모</label>
+              <textarea value={detail.outreachNote || ''} onChange={e => updateInf(detail.id, { outreachNote: e.target.value })} placeholder="컨택, 계약, 콘텐츠 관련 메모..." style={{ width: '100%', height: 72, resize: 'vertical' }} />
+            </div>
+            {/* Analytics */}
+            <div style={{ background: '#f8fafc', borderRadius: 10, padding: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 10 }}>📈 성과 데이터</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                {[['views','조회수'],['clicks','클릭'],['conversions','전환']].map(([f,l]) => (
+                  <div key={f}>
+                    <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 3 }}>{l}</div>
+                    <input value={detail[f] || ''} onChange={e => updateInf(detail.id, { [f]: e.target.value })} placeholder="0" style={{ width: '100%', padding: '4px 8px', fontSize: 12 }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Delete */}
+            <button className="btn btn-danger" onClick={() => { if(confirm('삭제하시겠습니까?')) { onDelete(detail.id); setDetailId(null); } }} style={{ width: '100%', marginTop: 16 }}>
+              🗑 이 인플루언서 삭제
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
+   OUTREACH PAGE
+   ============================================================ */
+const OUTREACH_PAGE_SIZE = 10;
+
+function OutreachPage({ influencers, campaigns, updateInf }) {
+  /* ── 칸반 필터 상태 ── */
+  const [fPlatform, setFPlatform] = useState('');
+  const [fCategory, setFCategory] = useState('');
+  const [fCampaign, setFCampaign] = useState(''); // 캠페인 필터
+  const [search, setSearch] = useState('');
+
+  /* ── 상세 뷰 상태 (null = 칸반, string = 해당 스테이지 상세 페이지) ── */
+  const [detailStage, setDetailStage] = useState(null);
+  const [detailSearch, setDetailSearch] = useState('');
+  const [detailPage, setDetailPage] = useState(0);
+
+  /* ── 아웃리치 자동화 상태 ── */
+  const TEMPLATES = {
+    initial: {
+      label: '초기 컨택 (협업 제안)',
+      subject: '[Speak] {{channelName}} 채널 파트너십 제안드립니다',
+      body: `안녕하세요 {{channelName}} 님,\n\n저는 영어 학습 앱 Speak의 파트너십 팀에서 연락드리는 진형이라고 합니다.\n\n{{channelName}} 채널에서 {{category}} 관련 콘텐츠를 꾸준히 제작하시는 것을 인상 깊게 보았습니다. 구독자분들께서도 영어 학습에 관심이 높으실 것 같아 연락드리게 되었습니다.\n\nSpeak은 AI 기반 영어 스피킹 학습 앱으로, 실제 원어민과 대화하는 것처럼 영어 회화를 연습할 수 있는 서비스입니다.\n\n채널 특성에 맞는 협업 방식으로 파트너십을 진행하고 싶습니다. 관심이 있으시다면 아래로 연락 주시면 감사하겠습니다.\n\n감사합니다.\n진형 드림\nSpeak Partnerships Team\njinhyeong.l@usespeak.com`,
+    },
+    followup: {
+      label: '팔로우업 (미응답 후)',
+      subject: '[Speak] 파트너십 제안 다시 한번 드립니다 - {{channelName}}',
+      body: `안녕하세요 {{channelName}} 님,\n\n지난번에 파트너십 관련하여 연락드렸던 Speak 파트너십팀 진형입니다.\n\n바쁘신 와중에 연락이 어려우실 수 있다는 점 이해합니다. 혹시 제안서나 추가 정보가 필요하시다면 언제든 말씀해 주세요.\n\nSpeak 앱을 직접 체험해보실 수 있는 프리미엄 무료 체험 기회도 드릴 수 있습니다.\n\n한 번쯤 미팅을 가져볼 수 있을까요? 편하신 시간에 30분 정도 이야기 나누고 싶습니다.\n\n감사합니다.\n진형 드림`,
+    },
+    interested: {
+      label: '관심 표명 후 디테일 전달',
+      subject: '[Speak] 협업 상세 안내 및 다음 단계 - {{channelName}}',
+      body: `안녕하세요 {{channelName}} 님,\n\n관심 가져주셔서 정말 감사합니다!\n\nSpeak 파트너십의 주요 내용을 간략히 안내드립니다:\n\n📌 협업 형태: 유튜브 영상 내 Speak 소개 (60~90초 스팟 광고)\n💰 보상: 구독자 규모 및 조회수 기반 협의 (+ 추가 성과 보너스)\n🎁 혜택: Speak 프리미엄 1년 무료 + 전용 할인 코드 제공\n📅 일정: 양측 합의 후 2~3주 내 콘텐츠 제작\n\n계약서는 영문/국문 모두 준비되어 있으며, 콘텐츠 방향은 채널 스타일에 맞게 자유롭게 조율 가능합니다.\n\n다음 단계로 간단한 화상 미팅을 제안드립니다. 편하신 시간을 알려주시면 캘린더 링크 보내드리겠습니다.\n\n감사합니다!\n진형 드림`,
+    },
+  };
+  // 템플릿을 localStorage에 영속 저장 (초기값은 하드코딩된 TEMPLATES)
+  const [templates, setTemplates] = useLS('speak_outreach_templates_v1', TEMPLATES);
+  const [tmplKey, setTmplKey] = useState('initial');
+  const [isNewMode, setIsNewMode] = useState(false);   // 신규 템플릿 작성 모드
+  const [isEditMode, setIsEditMode] = useState(false); // 삭제 버튼 표시 모드
+  const [newLabel, setNewLabel] = useState('');         // 신규 템플릿 레이블
+  const [selectedInfId, setSelectedInfId] = useState('');
+  const [infSearch, setInfSearch] = useState('');       // 인플루언서 검색어
+  const [showInfList, setShowInfList] = useState(false); // 검색 드롭다운 표시
+  const [selectedCampId, setSelectedCampId] = useState(''); // 캠페인 선택 (일괄 발송)
+  const [customSubj, setCustomSubj] = useState('');
+  const [customBody, setCustomBody] = useState('');
+  const [copied, setCopied] = useState('');
+
+  // Gmail API 관련 state
+  const [gmailClientId, setGmailClientId] = useLS('speak_gmail_client_id', '1027086754862-7pvthcct2me26ib8v0crigviosb5erik.apps.googleusercontent.com');
+  const [gmailToken, setGmailToken] = useState(null);
+  const [showClientIdModal, setShowClientIdModal] = useState(false);
+  const [clientIdInput, setClientIdInput] = useState('');
+  const [sendingStatus, setSendingStatus] = useState(''); // '', 'sending', 'done', 'error'
+  const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
+
+  const selInf = influencers.find(i => i.id === selectedInfId);
+
+  // 특정 인플루언서 객체로 템플릿 변수 치환 (개별/일괄 모두 사용)
+  function fillTemplateFor(inf, str) {
+    if (!inf) return str;
+    return str
+      .replace(/{{channelName}}/g, inf.channelName || '')
+      .replace(/{{handle}}/g, inf.handle || '')
+      .replace(/{{category}}/g, inf.category || '콘텐츠')
+      .replace(/{{followers}}/g, fmt(inf.followers))
+      .replace(/{{platform}}/g, PLATFORMS[inf.platform]?.label || inf.platform);
+  }
+
+  function fillTemplate(str) { return fillTemplateFor(selInf, str); }
+
+  useEffect(() => {
+    if (isNewMode) return; // 신규 모드에서는 useEffect로 덮어쓰지 않음
+    const tmpl = templates[tmplKey];
+    if (!tmpl) return;
+    if (!selInf) { setCustomSubj(tmpl.subject); setCustomBody(tmpl.body); return; }
+    setCustomSubj(fillTemplate(tmpl.subject));
+    setCustomBody(fillTemplate(tmpl.body));
+  }, [tmplKey, selectedInfId, isNewMode]);
+
+  function saveNewTemplate() {
+    const label = newLabel.trim();
+    if (!label) { alert('템플릿 이름을 입력해주세요.'); return; }
+    const key = 'custom_' + Date.now();
+    setTemplates(prev => ({ ...prev, [key]: { label, subject: customSubj, body: customBody } }));
+    setTmplKey(key);
+    setIsNewMode(false);
+    setNewLabel('');
+  }
+
+  function deleteTemplate(key) {
+    if (!window.confirm(templates[key].label + ' 템플릿을 삭제할까요?')) return;
+    setTemplates(prev => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    // 삭제된 게 현재 선택된 템플릿이면 첫 번째로 이동
+    if (tmplKey === key) {
+      const remaining = Object.keys(templates).filter(k => k !== key);
+      if (remaining.length) setTmplKey(remaining[0]);
+    }
+  }
+
+  function startNewTemplate() {
+    setIsNewMode(true);
+    setIsEditMode(false);
+    setNewLabel('');
+    setCustomSubj('');
+    setCustomBody('');
+  }
+
+  function copyText(text, key) {
+    navigator.clipboard.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 2000); });
+  }
+
+  // Gmail API: Base64 URL-safe 인코딩으로 RFC 2822 메일 생성
+  function buildRawEmail(to, subject, body) {
+    var raw = 'To: ' + to + '\r\n' +
+      'Subject: =?UTF-8?B?' + btoa(unescape(encodeURIComponent(subject))) + '?=\r\n' +
+      'MIME-Version: 1.0\r\n' +
+      'Content-Type: text/plain; charset=UTF-8\r\n' +
+      'Content-Transfer-Encoding: base64\r\n' +
+      '\r\n' +
+      btoa(unescape(encodeURIComponent(body)));
+    // Base64 URL-safe 변환 (+ → -, / → _, = 제거)
+    return btoa(unescape(encodeURIComponent(raw)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  }
+
+  // Gmail API: 토큰 발급 (OAuth2 팝업)
+  function getGmailToken(callback) {
+    if (!gmailClientId) {
+      setShowClientIdModal(true);
+      return;
+    }
+    if (gmailToken && gmailToken.expires > Date.now()) {
+      callback(gmailToken.access_token);
+      return;
+    }
+    if (!window.google || !window.google.accounts) {
+      alert('Google Identity Services 라이브러리가 아직 로드되지 않았습니다.\n잠시 후 다시 시도해주세요.');
+      return;
+    }
+    var client = window.google.accounts.oauth2.initTokenClient({
+      client_id: gmailClientId,
+      scope: 'https://www.googleapis.com/auth/gmail.send',
+      callback: function(resp) {
+        if (resp.error) { alert('Google 인증 실패: ' + resp.error); return; }
+        setGmailToken({ access_token: resp.access_token, expires: Date.now() + (resp.expires_in - 60) * 1000 });
+        callback(resp.access_token);
+      }
+    });
+    client.requestAccessToken({ prompt: '' });
+  }
+
+  // Gmail API: 단건 발송
+  function sendGmailAPI(to, subj, body, onSuccess, onError) {
+    getGmailToken(function(token) {
+      var raw = buildRawEmail(to, subj, body);
+      fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ raw: raw })
+      }).then(function(res) {
+        if (res.ok) { onSuccess && onSuccess(); }
+        else { res.json().then(function(d) { onError && onError(d.error?.message || '발송 실패'); }); }
+      }).catch(function(e) { onError && onError(e.message); });
+    });
+  }
+
+  // 개별 인플루언서에게 Gmail API 직접 발송
+  function sendGmailDirect() {
+    if (!selInf?.contactEmail) return alert('선택한 인플루언서에 이메일이 없습니다.\n인플루언서 DB에서 이메일을 먼저 등록해주세요.');
+    if (!customSubj.trim()) return alert('제목을 입력해주세요.');
+    if (!window.confirm(selInf.contactEmail + '에게 이메일을 발송하겠습니다.')) return;
+    setSendingStatus('sending');
+    sendGmailAPI(
+      selInf.contactEmail, customSubj, customBody,
+      function() {
+        setSendingStatus('done');
+        updateInf(selInf.id, { outreachStatus: '컨택 완료' });
+        setTimeout(function() { setSendingStatus(''); }, 3000);
+      },
+      function(msg) {
+        setSendingStatus('error');
+        alert('발송 실패: ' + msg);
+        setTimeout(function() { setSendingStatus(''); }, 3000);
+      }
+    );
+  }
+
+  // 캠페인 인플루언서 일괄 Gmail API 발송 (순차 처리)
+  function sendGmailBulk() {
+    var tmpl = templates[tmplKey];
+    if (!tmpl) { alert('템플릿을 먼저 선택해주세요.'); return; }
+    var camp = campaigns.find(function(c) { return c.id === selectedCampId; });
+    if (!camp) { alert('캠페인을 먼저 선택해주세요.'); return; }
+    var campInfs = influencers.filter(function(i) { return (camp.influencerIds || []).includes(i.id) && i.contactEmail; });
+    if (!campInfs.length) { alert('캠페인에 이메일이 등록된 인플루언서가 없습니다.'); return; }
+    if (!window.confirm(campInfs.length + '명에게 이메일을 직접 발송하겠습니다.\nGoogle 계정 인증이 필요합니다.')) return;
+
+    getGmailToken(function(token) {
+      setBulkProgress({ current: 0, total: campInfs.length });
+      setSendingStatus('sending');
+
+      function sendNext(idx) {
+        if (idx >= campInfs.length) {
+          setSendingStatus('done');
+          setBulkProgress({ current: campInfs.length, total: campInfs.length });
+          setTimeout(function() { setSendingStatus(''); setBulkProgress({ current: 0, total: 0 }); }, 4000);
+          return;
+        }
+        var inf = campInfs[idx];
+        var subj = fillTemplateFor(inf, tmpl.subject);
+        var body = fillTemplateFor(inf, tmpl.body);
+        var raw = buildRawEmail(inf.contactEmail, subj, body);
+        fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ raw: raw })
+        }).then(function(res) {
+          setBulkProgress({ current: idx + 1, total: campInfs.length });
+          if (res.ok) { updateInf(inf.id, { outreachStatus: '컨택 완료' }); }
+          setTimeout(function() { sendNext(idx + 1); }, 300);
+        }).catch(function() {
+          setBulkProgress({ current: idx + 1, total: campInfs.length });
+          setTimeout(function() { sendNext(idx + 1); }, 300);
+        });
+      }
+      sendNext(0);
+    });
+  }
+
+  const targetInfs = influencers.filter(i => !['Drop', '거절'].includes(i.dbStatus));
+
+  // 선택된 캠페인에 속한 인플루언서 ID 집합
+  const campFilterIds = fCampaign
+    ? new Set((campaigns.find(c => c.id === fCampaign)?.influencerIds || []))
+    : null;
+
+  const pool = influencers.filter(i =>
+    i.dbStatus === 'Selected (1순위)' &&
+    (!fPlatform  || i.platform === fPlatform) &&
+    (!fCategory  || i.category === fCategory) &&
+    (!campFilterIds || campFilterIds.has(i.id)) &&
+    (!search     || i.channelName.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  const byStage = OUTREACH_STAGES.reduce((acc, s) => { acc[s] = pool.filter(i => i.outreachStatus === s); return acc; }, {});
+
+  /* ── 상세 뷰: 특정 스테이지 인플루언서 목록 ── */
+  if (detailStage !== null) {
+    const allInStage = influencers.filter(i => i.outreachStatus === detailStage);
+    const filtered = allInStage.filter(i =>
+      !detailSearch ||
+      i.channelName.toLowerCase().includes(detailSearch.toLowerCase()) ||
+      (i.contactEmail || '').toLowerCase().includes(detailSearch.toLowerCase())
+    );
+    const totalPages = Math.ceil(filtered.length / OUTREACH_PAGE_SIZE);
+    const paged = filtered.slice(detailPage * OUTREACH_PAGE_SIZE, (detailPage + 1) * OUTREACH_PAGE_SIZE);
+    const { bg: stageBg, color: stageColor } = sc(detailStage);
+
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 1100 }}>
+        {/* 헤더 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+          <button
+            onClick={() => { setDetailStage(null); setDetailSearch(''); setDetailPage(0); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8,
+              border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', fontSize: 13,
+              color: '#374151', fontWeight: 500 }}>
+            ← ReachOut
+          </button>
+          <span style={{ background: stageBg, color: stageColor, padding: '5px 14px', borderRadius: 20, fontSize: 13, fontWeight: 700 }}>
+            {detailStage}
+          </span>
+          <span style={{ fontSize: 13, color: '#64748b' }}>총 <strong style={{ color: '#374151' }}>{allInStage.length}명</strong></span>
+        </div>
+
+        {/* 검색 바 */}
+        <div className="filter-bar" style={{ marginBottom: 16 }}>
+          <input
+            value={detailSearch}
+            onChange={e => { setDetailSearch(e.target.value); setDetailPage(0); }}
+            placeholder="채널명 또는 이메일 검색"
+            style={{ flex: 1, minWidth: 220 }}
+          />
+          {detailSearch && (
+            <button onClick={() => { setDetailSearch(''); setDetailPage(0); }}
+              className="btn btn-secondary" style={{ fontSize: 12 }}>
+              초기화
+            </button>
+          )}
+          <div style={{ marginLeft: 'auto', fontSize: 13, color: '#64748b' }}>
+            {filtered.length}개 결과
+            {totalPages > 1 && <span> · <strong style={{ color: '#F97316' }}>{detailPage + 1}</strong> / {totalPages} 페이지</span>}
+          </div>
+        </div>
+
+        {/* 카드 목록 */}
+        {paged.length === 0 ? (
+          <div className="empty-state">
+            <div style={{ fontSize: 36, marginBottom: 10 }}>🔍</div>
+            <div style={{ fontWeight: 600 }}>해당 조건의 인플루언서가 없습니다</div>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 12 }}>
+            {paged.map(inf => {
+              const score = calcScore(inf);
+              const scoreColor = score >= 70 ? '#16a34a' : score >= 50 ? '#ca8a04' : '#dc2626';
+              return (
+                <div key={inf.id} className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+                  {/* 채널 정보 */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15 }}>{inf.channelName}</div>
+                      <span style={{ fontSize: 11, color: '#94a3b8' }}>{inf.handle}</span>
+                      {inf.url && (
+                        <a href={inf.url} target="_blank" rel="noopener noreferrer"
+                          style={{ fontSize: 11, color: '#6366f1' }}>↗ 채널</a>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 6, alignItems: 'center' }}>
+                      <PBadge platform={inf.platform} />
+                      <span style={{ fontSize: 12, color: '#64748b' }}>{inf.category}</span>
+                      <span style={{ fontSize: 12, color: '#64748b' }}>👥 {fmt(inf.followers)}</span>
+                      <span style={{ fontSize: 12, color: '#64748b' }}>👁 {fmt(inf.avgViews)}</span>
+                    </div>
+                    {inf.contactEmail && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5,
+                          background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 7,
+                          padding: '3px 9px', fontSize: 12, color: '#065f46', fontWeight: 600 }}>
+                          📧 {inf.contactEmail}
+                        </div>
+                        <a href={'mailto:' + inf.contactEmail}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 5,
+                            background: '#dbeafe', border: '1px solid #60a5fa', borderRadius: 7,
+                            padding: '5px 12px', fontSize: 12, color: '#1e40af', fontWeight: 600,
+                            textDecoration: 'none', cursor: 'pointer' }}>
+                          ✉️ 이메일 연락
+                        </a>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <StageSelect value={inf.outreachStatus} options={OUTREACH_STAGES} onChange={v => updateInf(inf.id, { outreachStatus: v })} />
+                      <input
+                        value={inf.outreachNote || ''}
+                        onChange={e => updateInf(inf.id, { outreachNote: e.target.value })}
+                        placeholder="메모"
+                        style={{ flex: 1, minWidth: 160, fontSize: 12, padding: '5px 9px' }}
+                      />
+                    </div>
+                  </div>
+                  {/* 스코어 */}
+                  <div style={{ textAlign: 'center', minWidth: 56, flexShrink: 0 }}>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: scoreColor }}>{score}</div>
+                    <div style={{ fontSize: 10, color: '#94a3b8' }}>/ 100</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* 페이지네이션 */}
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: 20 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>
+              <span style={{ color: '#F97316', fontSize: 15 }}>{detailPage + 1}</span>
+              <span style={{ color: '#94a3b8' }}> / {totalPages} 페이지</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button className="btn btn-secondary" onClick={() => setDetailPage(0)}
+                disabled={detailPage === 0} style={{ fontSize: 13, padding: '6px 10px', opacity: detailPage === 0 ? 0.35 : 1, fontWeight: 700 }}>«</button>
+              <button className="btn btn-secondary" onClick={() => setDetailPage(p => Math.max(0, p - 1))}
+                disabled={detailPage === 0} style={{ fontSize: 12, padding: '6px 12px', opacity: detailPage === 0 ? 0.35 : 1 }}>‹ 이전</button>
+              {Array.from({ length: Math.min(totalPages, 7) }, (_, k) => {
+                const start = Math.max(0, Math.min(detailPage - 3, totalPages - 7));
+                return start + k;
+              }).map(i => (
+                <button key={i} onClick={() => setDetailPage(i)}
+                  style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer',
+                    fontSize: 12, fontWeight: i === detailPage ? 700 : 500,
+                    background: i === detailPage ? '#F97316' : '#f1f5f9',
+                    color: i === detailPage ? 'white' : '#374151',
+                    boxShadow: i === detailPage ? '0 2px 8px rgba(249,115,22,0.35)' : 'none' }}>
+                  {i + 1}
+                </button>
+              ))}
+              <button className="btn btn-secondary" onClick={() => setDetailPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={detailPage === totalPages - 1} style={{ fontSize: 12, padding: '6px 12px', opacity: detailPage === totalPages - 1 ? 0.35 : 1 }}>다음 ›</button>
+              <button className="btn btn-secondary" onClick={() => setDetailPage(totalPages - 1)}
+                disabled={detailPage === totalPages - 1} style={{ fontSize: 13, padding: '6px 10px', opacity: detailPage === totalPages - 1 ? 0.35 : 1, fontWeight: 700 }}>»</button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  /* ── 칸반 메인 뷰 ── */
+  return (
+    <div style={{ padding: 28 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
+        <div className="section-title">ReachOut</div>
+        {fCampaign && (
+          <span style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 20,
+            padding: '3px 12px', fontSize: 12, color: '#ea580c', fontWeight: 700 }}>
+            📌 {campaigns.find(c => c.id === fCampaign)?.name}
+          </span>
+        )}
+      </div>
+      <div className="section-sub">Selected 인플루언서 컨택 현황 — 총 {pool.length}명</div>
+      <div className="filter-bar" style={{ marginBottom: 20 }}>
+        <input placeholder="🔍 채널명 검색" value={search} onChange={e => setSearch(e.target.value)} />
+        <select value={fPlatform} onChange={e => setFPlatform(e.target.value)}>
+          <option value="">전체 플랫폼</option>
+          {Object.entries(PLATFORMS).map(([k,v]) => <option key={k} value={k}>{v.label}</option>)}
+        </select>
+        <select value={fCategory} onChange={e => setFCategory(e.target.value)}>
+          <option value="">전체 카테고리</option>
+          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        {/* 캠페인 필터 */}
+        <select value={fCampaign} onChange={e => setFCampaign(e.target.value)}
+          style={{ minWidth: 140, borderColor: fCampaign ? '#F97316' : undefined,
+            color: fCampaign ? '#F97316' : undefined, fontWeight: fCampaign ? 600 : 400 }}>
+          <option value="">전체 캠페인</option>
+          {(campaigns || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        {fCampaign && (
+          <button onClick={() => setFCampaign('')}
+            style={{ fontSize: 11, padding: '4px 9px', borderRadius: 7, border: '1px solid #fed7aa',
+              background: '#fff7ed', color: '#ea580c', cursor: 'pointer', fontWeight: 600 }}>
+            ✕ 캠페인 해제
+          </button>
+        )}
+        {/* 스테이지별 카운트 — 클릭 시 상세 뷰로 이동 */}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {OUTREACH_STAGES.map(s => { const { bg, color } = sc(s); return (
+            <button key={s} onClick={() => { setDetailStage(s); setDetailSearch(''); setDetailPage(0); }}
+              style={{ background: bg, color, padding: '4px 10px', borderRadius: 10, fontSize: 11,
+                fontWeight: 600, border: 'none', cursor: 'pointer',
+                transition: 'opacity 0.15s', opacity: 1 }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.75'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
+              {s}: {byStage[s].length}
+            </button>
+          ); })}
+        </div>
+      </div>
+
+      {/* 칸반 — 컬럼 고정 높이 + 내부 스크롤 */}
+      <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 16 }}>
+        {OUTREACH_STAGES.map(stage => {
+          const cards = byStage[stage];
+          const { bg, color } = sc(stage);
+          return (
+            <div key={stage} className="kanban-col" style={{ display: 'flex', flexDirection: 'column' }}>
+              {/* 컬럼 헤더 — 클릭 시 상세 뷰 */}
+              <button
+                onClick={() => { setDetailStage(stage); setDetailSearch(''); setDetailPage(0); }}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  marginBottom: 12, background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                  width: '100%' }}>
+                <span style={{ background: bg, color, padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600 }}>{stage}</span>
+                <span style={{ background: '#f1f5f9', color: '#64748b', padding: '2px 8px', borderRadius: 8, fontSize: 11, fontWeight: 600 }}>{cards.length}</span>
+              </button>
+              {/* 카드 영역 — 고정 높이 + 스크롤 */}
+              <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 340px)', paddingRight: 2 }}>
+                {cards.length === 0 && <div style={{ fontSize: 11, color: '#cbd5e1', textAlign: 'center', padding: '16px 0' }}>없음</div>}
+                {cards.map(inf => (
+                  <div key={inf.id} className="kanban-card">
+                    <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 5 }}>{inf.channelName}</div>
+                    <div style={{ display: 'flex', gap: 4, marginBottom: 7, flexWrap: 'wrap' }}>
+                      <PBadge platform={inf.platform} />
+                      <span style={{ fontSize: 10, color: '#94a3b8', alignSelf: 'center' }}>{inf.category}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>
+                      👥 {fmt(inf.followers)} · 👁 {fmt(inf.avgViews)}
+                    </div>
+                    {inf.contactEmail && <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>✉ {inf.contactEmail}</div>}
+                    <StageSelect value={inf.outreachStatus} options={OUTREACH_STAGES} onChange={v => updateInf(inf.id, { outreachStatus: v })} />
+                    <input value={inf.outreachNote || ''} onChange={e => updateInf(inf.id, { outreachNote: e.target.value })} placeholder="메모" style={{ width: '100%', marginTop: 6, fontSize: 11, padding: '4px 8px' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── 구분선 ── */}
+      <div style={{ borderTop: '2px solid #e5e7eb', margin: '32px 0 28px' }} />
+
+      {/* ── 아웃리치 자동화 섹션 ── */}
+      <div className="section-title" style={{ fontSize: 17 }}>✉️ 아웃리치 자동화</div>
+      <div className="section-sub">인플루언서별 맞춤 이메일 템플릿을 생성하고 Gmail로 전송합니다.</div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 20 }}>
+        {/* 왼쪽: 설정 */}
+        <div>
+          <div className="card" style={{ padding: 16, marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>📝 템플릿 선택</div>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button onClick={() => { setIsEditMode(!isEditMode); setIsNewMode(false); }}
+                  style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6,
+                    border: '1px solid ' + (isEditMode ? '#f87171' : '#e2e8f0'),
+                    background: isEditMode ? '#fef2f2' : 'white',
+                    color: isEditMode ? '#dc2626' : '#64748b', cursor: 'pointer', fontWeight: 500 }}>
+                  {isEditMode ? '완료' : '✏️ 편집'}
+                </button>
+                <button onClick={startNewTemplate}
+                  style={{ fontSize: 11, padding: '3px 8px', borderRadius: 6, border: '1px solid #a78bfa',
+                    background: '#f5f3ff', color: '#7c3aed', cursor: 'pointer', fontWeight: 600 }}>
+                  ＋ 신규
+                </button>
+              </div>
+            </div>
+            {Object.entries(templates).map(([k, t]) => (
+              <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                <button onClick={() => { setTmplKey(k); setIsNewMode(false); }}
+                  style={{ flex: 1, textAlign: 'left', padding: '9px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                    background: !isNewMode && tmplKey === k ? '#ede9fe' : '#f8fafc',
+                    color: !isNewMode && tmplKey === k ? '#6d28d9' : '#374151',
+                    fontWeight: !isNewMode && tmplKey === k ? 600 : 400, fontSize: 12 }}>
+                  {t.label}
+                </button>
+                {isEditMode && (
+                  <button onClick={() => deleteTemplate(k)}
+                    style={{ padding: '6px 8px', borderRadius: 6, border: '1px solid #fca5a5', background: '#fef2f2',
+                      color: '#dc2626', cursor: 'pointer', fontSize: 13, lineHeight: 1, flexShrink: 0 }}>
+                    🗑
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="card" style={{ padding: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 10 }}>👤 인플루언서 선택</div>
+            {/* 검색 입력창 */}
+            <div style={{ position: 'relative' }}>
+              <input
+                value={infSearch}
+                onChange={e => { setInfSearch(e.target.value); setShowInfList(true); setSelectedInfId(''); }}
+                onFocus={() => setShowInfList(true)}
+                onBlur={() => setTimeout(() => setShowInfList(false), 150)}
+                placeholder="채널명 검색..."
+                style={{ width: '100%', fontSize: 12, padding: '7px 10px', borderRadius: 8, border: '1px solid #e2e8f0', boxSizing: 'border-box' }}
+              />
+              {/* 검색 드롭다운 */}
+              {showInfList && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.10)', zIndex: 100, maxHeight: 200, overflowY: 'auto', marginTop: 2 }}>
+                  {targetInfs
+                    .filter(i => !infSearch.trim() || i.channelName.toLowerCase().includes(infSearch.toLowerCase()) || (i.handle || '').toLowerCase().includes(infSearch.toLowerCase()))
+                    .slice(0, 20)
+                    .map(i => (
+                      <div key={i.id}
+                        onMouseDown={() => { setSelectedInfId(i.id); setInfSearch(i.channelName); setShowInfList(false); }}
+                        style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 12,
+                          background: selectedInfId === i.id ? '#ede9fe' : 'white',
+                          color: selectedInfId === i.id ? '#6d28d9' : '#374151' }}>
+                        <span style={{ fontWeight: 500 }}>{i.channelName}</span>
+                        {i.handle && <span style={{ color: '#94a3b8', marginLeft: 6 }}>{i.handle}</span>}
+                      </div>
+                    ))}
+                  {targetInfs.filter(i => !infSearch.trim() || i.channelName.toLowerCase().includes(infSearch.toLowerCase()) || (i.handle || '').toLowerCase().includes(infSearch.toLowerCase())).length === 0 && (
+                    <div style={{ padding: '10px 12px', fontSize: 12, color: '#94a3b8' }}>검색 결과 없음</div>
+                  )}
+                </div>
+              )}
+            </div>
+            {/* 선택된 인플루언서 정보 */}
+            {selInf && (
+              <div style={{ marginTop: 10, fontSize: 11, color: '#64748b', background: '#f8fafc', borderRadius: 8, padding: '8px 10px' }}>
+                <div>📧 {selInf.contactEmail || '이메일 미등록'}</div>
+                <div style={{ marginTop: 3 }}>📱 {selInf.contactDM || 'DM 미등록'}</div>
+                <div style={{ marginTop: 3 }}>📊 리치아웃: {selInf.outreachStatus}</div>
+              </div>
+            )}
+          </div>
+
+          {/* 캠페인 선택 (일괄 리치아웃) */}
+          <div className="card" style={{ padding: 16, marginTop: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 10 }}>🎯 캠페인 일괄 발송</div>
+            <select value={selectedCampId} onChange={e => setSelectedCampId(e.target.value)} style={{ width: '100%', fontSize: 12, marginBottom: 10 }}>
+              <option value="">-- 캠페인 선택 --</option>
+              {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            {selectedCampId && (() => {
+              var camp = campaigns.find(c => c.id === selectedCampId);
+              var campInfs = camp ? influencers.filter(i => (camp.influencerIds || []).includes(i.id)) : [];
+              var withEmail = campInfs.filter(i => i.contactEmail);
+              return (
+                <div>
+                  <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8 }}>
+                    총 {campInfs.length}명 · 이메일 등록 <b style={{ color: withEmail.length ? '#16a34a' : '#ef4444' }}>{withEmail.length}명</b>
+                  </div>
+                  <div style={{ maxHeight: 160, overflowY: 'auto', marginBottom: 10 }}>
+                    {campInfs.map(i => (
+                      <div key={i.id}
+                        onClick={() => { setSelectedInfId(i.id); setInfSearch(i.channelName); }}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '6px 10px', borderRadius: 6, marginBottom: 3, cursor: 'pointer',
+                          background: selectedInfId === i.id ? '#ede9fe' : '#f8fafc',
+                          border: '1px solid ' + (selectedInfId === i.id ? '#c4b5fd' : 'transparent') }}>
+                        <span style={{ fontSize: 12, fontWeight: selectedInfId === i.id ? 600 : 400, color: selectedInfId === i.id ? '#6d28d9' : '#374151' }}>{i.channelName}</span>
+                        {i.contactEmail
+                          ? <span style={{ fontSize: 10, color: '#16a34a' }}>✉</span>
+                          : <span style={{ fontSize: 10, color: '#ef4444' }}>미등록</span>}
+                      </div>
+                    ))}
+                  </div>
+                  {sendingStatus === 'sending' && bulkProgress.total > 0 ? (
+                    <div style={{ width: '100%', padding: '8px 0', borderRadius: 8, background: '#f5f3ff', border: '1px solid #c4b5fd', textAlign: 'center', fontSize: 12, color: '#6d28d9', fontWeight: 600 }}>
+                      ⏳ 발송 중... {bulkProgress.current}/{bulkProgress.total}
+                    </div>
+                  ) : sendingStatus === 'done' && bulkProgress.total > 0 ? (
+                    <div style={{ width: '100%', padding: '8px 0', borderRadius: 8, background: '#f0fdf4', border: '1px solid #86efac', textAlign: 'center', fontSize: 12, color: '#16a34a', fontWeight: 600 }}>
+                      ✅ {bulkProgress.total}명 발송 완료
+                    </div>
+                  ) : (
+                    <button onClick={sendGmailBulk} disabled={!withEmail.length}
+                      style={{ width: '100%', padding: '8px 0', borderRadius: 8, border: 'none',
+                        background: withEmail.length ? '#6d28d9' : '#e2e8f0',
+                        color: withEmail.length ? 'white' : '#94a3b8',
+                        cursor: withEmail.length ? 'pointer' : 'not-allowed', fontSize: 12, fontWeight: 600 }}>
+                      ✉️ {withEmail.length}명 일괄 메일 발송
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+
+        {/* 오른쪽: 에디터 */}
+        <div>
+          {/* 신규 모드: 템플릿 이름 입력 배너 */}
+          {isNewMode && (
+            <div style={{ background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: 10, padding: '12px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#6d28d9', whiteSpace: 'nowrap' }}>템플릿 이름</span>
+              <input value={newLabel} onChange={e => setNewLabel(e.target.value)}
+                placeholder="예) 뷰티 채널 전용 컨택" autoFocus
+                style={{ flex: 1, fontSize: 13, padding: '5px 10px', borderRadius: 6, border: '1px solid #c4b5fd' }} />
+              <button onClick={saveNewTemplate}
+                style={{ padding: '5px 14px', borderRadius: 6, border: 'none', background: '#7c3aed', color: 'white', cursor: 'pointer', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                💾 저장
+              </button>
+              <button onClick={() => { setIsNewMode(false); }}
+                style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'white', color: '#64748b', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>
+                취소
+              </button>
+            </div>
+          )}
+
+          <div className="card" style={{ padding: 18, marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>제목</div>
+              {!isNewMode && (
+                <button onClick={() => copyText(customSubj, 'subj')} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', color: copied === 'subj' ? '#16a34a' : '#374151' }}>
+                  {copied === 'subj' ? '✅ 복사됨' : '복사'}
+                </button>
+              )}
+            </div>
+            <input value={customSubj} onChange={e => setCustomSubj(e.target.value)}
+              placeholder={isNewMode ? '이메일 제목을 입력하세요...' : ''}
+              style={{ width: '100%' }} />
+          </div>
+
+          <div className="card" style={{ padding: 18, marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>본문</div>
+              {!isNewMode && (
+                <button onClick={() => copyText(customBody, 'body')} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', color: copied === 'body' ? '#16a34a' : '#374151' }}>
+                  {copied === 'body' ? '✅ 복사됨' : '복사'}
+                </button>
+              )}
+            </div>
+            <textarea value={customBody} onChange={e => setCustomBody(e.target.value)} rows={16}
+              placeholder={isNewMode ? '이메일 본문을 입력하세요...\n\n{{channelName}}, {{category}}, {{followers}}, {{platform}} 변수를 사용하면 인플루언서 선택 시 자동으로 채워집니다.' : ''}
+              style={{ width: '100%', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.7 }} />
+          </div>
+
+          {isNewMode ? (
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn btn-primary" onClick={saveNewTemplate}>💾 템플릿 저장</button>
+              <button className="btn btn-secondary" onClick={() => setIsNewMode(false)}>취소</button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              {sendingStatus === 'sending' && bulkProgress.total === 0 ? (
+                <div style={{ padding: '8px 20px', borderRadius: 8, background: '#f5f3ff', border: '1px solid #c4b5fd', fontSize: 13, color: '#6d28d9', fontWeight: 600 }}>⏳ 발송 중...</div>
+              ) : sendingStatus === 'done' && bulkProgress.total === 0 ? (
+                <div style={{ padding: '8px 20px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #86efac', fontSize: 13, color: '#16a34a', fontWeight: 600 }}>✅ 발송 완료!</div>
+              ) : sendingStatus === 'error' ? (
+                <div style={{ padding: '8px 20px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fca5a5', fontSize: 13, color: '#dc2626', fontWeight: 600 }}>❌ 발송 실패</div>
+              ) : (
+                <button className="btn btn-primary" onClick={sendGmailDirect} disabled={!selInf?.contactEmail}>✉️ 메일 발송</button>
+              )}
+              <button style={{ fontSize: 11, padding: '6px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', color: '#64748b' }}
+                onClick={() => { setClientIdInput(gmailClientId); setShowClientIdModal(true); }}
+                title="Google Client ID 설정">⚙️ 설정</button>
+            </div>
+          )}
+          {!isNewMode && !selInf?.contactEmail && selInf && (
+            <div style={{ marginTop: 10, fontSize: 11, color: '#f59e0b' }}>⚠️ 이메일이 없습니다. 인플루언서 DB에서 contactEmail을 먼저 등록해주세요.</div>
+          )}
+          {!isNewMode && !gmailClientId && (
+            <div style={{ marginTop: 8, fontSize: 11, color: '#6d28d9' }}>💡 메일 발송 전 ⚙️ 설정에서 Google Client ID를 먼저 등록해주세요.</div>
+          )}
+        </div>
+      </div>
+
+      {/* Google Client ID 설정 모달 */}
+      {showClientIdModal && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowClientIdModal(false)}>
+          <div className="modal" style={{ maxWidth: 500 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ fontSize: 17, fontWeight: 700 }}>⚙️ Google Client ID 설정</h2>
+              <button onClick={() => setShowClientIdModal(false)} style={{ background: 'none', border: 'none', fontSize: 20, color: '#94a3b8', cursor: 'pointer' }}>✕</button>
+            </div>
+            <div style={{ fontSize: 13, color: '#475569', marginBottom: 14, lineHeight: 1.7 }}>
+              Gmail API 직접 발송을 위해 <b>Google Cloud Console</b>에서 OAuth 2.0 Client ID를 발급한 뒤 입력하세요.<br />
+              허가된 JavaScript 원본에 <b>http://localhost:포트번호</b>를 추가해야 합니다.
+            </div>
+            <input
+              value={clientIdInput}
+              onChange={e => setClientIdInput(e.target.value)}
+              placeholder="xxxxxx.apps.googleusercontent.com"
+              style={{ width: '100%', marginBottom: 14, fontSize: 13, padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1' }}
+            />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-secondary" onClick={() => setShowClientIdModal(false)}>취소</button>
+              <button className="btn btn-primary" onClick={() => { setGmailClientId(clientIdInput.trim()); setGmailToken(null); setShowClientIdModal(false); }}>저장</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
+   CONTRACT PAGE
+   ============================================================ */
+function ContractPage({ influencers, campaigns, updateInf }) {
+  const [fCampaign, setFCampaign] = useState('');
+  const campIds = fCampaign ? new Set(campaigns.find(c => c.id === fCampaign)?.influencerIds || []) : null;
+
+  const pool = influencers.filter(i =>
+    (['관심','계약 진행 중'].includes(i.outreachStatus) || i.contractStatus !== '미발송') &&
+    (!campIds || campIds.has(i.id))
+  );
+  const byStage = CONTRACT_STAGES.reduce((acc, s) => { acc[s] = pool.filter(i => i.contractStatus === s); return acc; }, {});
+  const signed = byStage['서명 완료'] || [];
+
+  return (
+    <div style={{ padding: 28 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
+        <div className="section-title">계약 관리</div>
+        {fCampaign && (
+          <span style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 20,
+            padding: '3px 12px', fontSize: 12, color: '#ea580c', fontWeight: 700 }}>
+            📌 {campaigns.find(c => c.id === fCampaign)?.name}
+          </span>
+        )}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+        <div className="section-sub" style={{ margin: 0 }}>리치아웃 관심/진행 중 인플루언서의 계약 파이프라인 — {pool.length}명</div>
+        <select value={fCampaign} onChange={e => setFCampaign(e.target.value)}
+          style={{ fontSize: 12, padding: '5px 10px', borderRadius: 8, marginLeft: 'auto',
+            borderColor: fCampaign ? '#F97316' : undefined, color: fCampaign ? '#F97316' : undefined, fontWeight: fCampaign ? 600 : 400 }}>
+          <option value="">전체 캠페인</option>
+          {(campaigns || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        {fCampaign && (
+          <button onClick={() => setFCampaign('')}
+            style={{ fontSize: 11, padding: '4px 9px', borderRadius: 7, border: '1px solid #fed7aa',
+              background: '#fff7ed', color: '#ea580c', cursor: 'pointer', fontWeight: 600 }}>
+            ✕
+          </button>
+        )}
+      </div>
+
+      {/* Kanban */}
+      <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 16, marginBottom: 24 }}>
+        {CONTRACT_STAGES.map(stage => {
+          const cards = byStage[stage] || [];
+          const { bg, color } = sc(stage);
+          return (
+            <div key={stage} className="kanban-col" style={{ minWidth: 270, flex: '0 0 270px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ background: bg, color, padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600 }}>{stage}</span>
+                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>{cards.length}명</span>
+              </div>
+              {cards.length === 0 && <div style={{ fontSize: 11, color: '#cbd5e1', textAlign: 'center', padding: '16px 0' }}>없음</div>}
+              {cards.map(inf => (
+                <div key={inf.id} className="kanban-card">
+                  <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 6 }}>{inf.channelName}</div>
+                  <PBadge platform={inf.platform} />
+                  <div style={{ fontSize: 11, color: '#64748b', margin: '7px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {inf.contactEmail || inf.contactDM || '연락처 없음'}
+                  </div>
+                  <input value={inf.contractAmount || ''} onChange={e => updateInf(inf.id, { contractAmount: e.target.value })} placeholder="💰 계약 단가" style={{ width: '100%', fontSize: 11, padding: '5px 8px', marginBottom: 5 }} />
+                  <input type="date" value={inf.contractDate || ''} onChange={e => updateInf(inf.id, { contractDate: e.target.value })} style={{ width: '100%', fontSize: 11, padding: '5px 8px', marginBottom: 5 }} />
+                  <StageSelect value={inf.contractStatus} options={CONTRACT_STAGES} onChange={v => updateInf(inf.id, { contractStatus: v })} />
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Signed list */}
+      <div className="card" style={{ overflow: 'hidden' }}>
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9', fontWeight: 600, fontSize: 14 }}>
+          ✅ 계약 완료 목록 ({signed.length}명) — 총 계약 단가: {
+            signed.filter(i => i.contractAmount).map(i => {
+              const n = parseInt(String(i.contractAmount).replace(/[^0-9]/g,'')) || 0;
+              return n;
+            }).reduce((a,b) => a+b, 0).toLocaleString()
+          }원
+        </div>
+        {signed.length === 0 ? (
+          <div className="empty-state" style={{ padding: '30px' }}>서명 완료된 계약이 없습니다</div>
+        ) : (
+          <table>
+            <thead><tr>
+              <th>채널명</th><th>플랫폼</th><th>카테고리</th><th>계약 단가</th><th>계약일</th><th>콘텐츠 상태</th>
+            </tr></thead>
+            <tbody>
+              {signed.map(inf => (
+                <tr key={inf.id}>
+                  <td><div style={{ fontWeight: 500 }}>{inf.channelName}</div></td>
+                  <td><PBadge platform={inf.platform} /></td>
+                  <td style={{ fontSize: 12, color: '#64748b' }}>{inf.category || '—'}</td>
+                  <td style={{ fontWeight: 500, color: '#16a34a' }}>{inf.contractAmount || '—'}</td>
+                  <td style={{ fontSize: 12, color: '#64748b' }}>{inf.contractDate || '—'}</td>
+                  <td><Badge label={inf.contentStatus} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   CONTENT PAGE
+   ============================================================ */
+function ContentPage({ influencers, campaigns, updateInf }) {
+  const [fCampaign, setFCampaign] = useState('');
+  const campIds = fCampaign ? new Set(campaigns.find(c => c.id === fCampaign)?.influencerIds || []) : null;
+
+  const contracted = influencers.filter(i =>
+    i.contractStatus === '서명 완료' && (!campIds || campIds.has(i.id))
+  );
+  const byStage = CONTENT_STAGES.reduce((acc, s) => { acc[s] = contracted.filter(i => i.contentStatus === s); return acc; }, {});
+
+  return (
+    <div style={{ padding: 28 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
+        <div className="section-title">QA</div>
+        {fCampaign && (
+          <span style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 20,
+            padding: '3px 12px', fontSize: 12, color: '#ea580c', fontWeight: 700 }}>
+            📌 {campaigns.find(c => c.id === fCampaign)?.name}
+          </span>
+        )}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+        <div className="section-sub" style={{ margin: 0 }}>계약 완료 인플루언서 {contracted.length}명의 콘텐츠 제작·업로드·검수 현황</div>
+        <select value={fCampaign} onChange={e => setFCampaign(e.target.value)}
+          style={{ fontSize: 12, padding: '5px 10px', borderRadius: 8, marginLeft: 'auto',
+            borderColor: fCampaign ? '#F97316' : undefined, color: fCampaign ? '#F97316' : undefined, fontWeight: fCampaign ? 600 : 400 }}>
+          <option value="">전체 캠페인</option>
+          {(campaigns || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        {fCampaign && (
+          <button onClick={() => setFCampaign('')}
+            style={{ fontSize: 11, padding: '4px 9px', borderRadius: 7, border: '1px solid #fed7aa',
+              background: '#fff7ed', color: '#ea580c', cursor: 'pointer', fontWeight: 600 }}>
+            ✕
+          </button>
+        )}
+      </div>
+
+      {/* Stage summary */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, overflowX: 'auto' }}>
+        {CONTENT_STAGES.map(s => {
+          const { bg, color } = sc(s);
+          const cnt = byStage[s]?.length || 0;
+          return (
+            <div key={s} style={{ background: bg, borderRadius: 10, padding: '12px 18px', textAlign: 'center', flexShrink: 0 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color }}>{cnt}</div>
+              <div style={{ fontSize: 11, color, marginTop: 2 }}>{s}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="card" style={{ overflow: 'hidden' }}>
+        {contracted.length === 0 ? (
+          <div className="empty-state">계약 완료된 인플루언서가 없습니다.<br />계약 관리 탭에서 계약을 완료해주세요.</div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>채널명</th><th>플랫폼</th><th>콘텐츠 상태</th><th>업로드 날짜</th><th>콘텐츠 URL</th><th>메모</th>
+                </tr>
+              </thead>
+              <tbody>
+                {contracted.sort((a,b) => CONTENT_STAGES.indexOf(a.contentStatus) - CONTENT_STAGES.indexOf(b.contentStatus)).map(inf => (
+                  <tr key={inf.id}>
+                    <td>
+                      <div style={{ fontWeight: 500 }}>{inf.channelName}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>{inf.contactEmail}</div>
+                    </td>
+                    <td><PBadge platform={inf.platform} /></td>
+                    <td><StageSelect value={inf.contentStatus} options={CONTENT_STAGES} onChange={v => updateInf(inf.id, { contentStatus: v })} /></td>
+                    <td>
+                      <input type="date" value={inf.contentUploadDate || ''} onChange={e => updateInf(inf.id, { contentUploadDate: e.target.value })} style={{ fontSize: 12, padding: '4px 8px', width: 140 }} />
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                        <input value={inf.contentUrl || ''} onChange={e => updateInf(inf.id, { contentUrl: e.target.value })} placeholder="URL 입력" style={{ fontSize: 12, padding: '4px 8px', width: 160 }} />
+                        {inf.contentUrl && <a href={inf.contentUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#6366f1', fontSize: 14, textDecoration: 'none' }}>🔗</a>}
+                      </div>
+                    </td>
+                    <td>
+                      <input value={inf.contentNote || ''} onChange={e => updateInf(inf.id, { contentNote: e.target.value })} placeholder="검수 메모" style={{ fontSize: 12, padding: '4px 8px', width: 150 }} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   ANALYTICS PAGE
+   ============================================================ */
+function AnalyticsPage({ influencers, campaigns }) {
+  const [fCampaign, setFCampaign] = useState('');
+  const campIds = fCampaign ? new Set(campaigns.find(c => c.id === fCampaign)?.influencerIds || []) : null;
+
+  const base = influencers.filter(i => !campIds || campIds.has(i.id));
+  const withData = base.filter(i => i.contentUrl || (i.views && i.views !== ''));
+  const totalV  = withData.reduce((s,i) => s + (parseInt(i.views)||0), 0);
+  const totalCl = withData.reduce((s,i) => s + (parseInt(i.clicks)||0), 0);
+  const totalCo = withData.reduce((s,i) => s + (parseInt(i.conversions)||0), 0);
+
+  const platPerf = {};
+  withData.forEach(i => {
+    const p = PLATFORMS[i.platform]?.label || i.platform;
+    if (!platPerf[p]) platPerf[p] = { views: 0, clicks: 0, count: 0 };
+    platPerf[p].views  += parseInt(i.views)||0;
+    platPerf[p].clicks += parseInt(i.clicks)||0;
+    platPerf[p].count++;
+  });
+
+  return (
+    <div style={{ padding: 28 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
+        <div className="section-title">Results</div>
+        {fCampaign && (
+          <span style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 20,
+            padding: '3px 12px', fontSize: 12, color: '#ea580c', fontWeight: 700 }}>
+            📌 {campaigns.find(c => c.id === fCampaign)?.name}
+          </span>
+        )}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+        <div className="section-sub" style={{ margin: 0 }}>콘텐츠 업로드 후 성과 집계 현황</div>
+        <select value={fCampaign} onChange={e => setFCampaign(e.target.value)}
+          style={{ fontSize: 12, padding: '5px 10px', borderRadius: 8, marginLeft: 'auto',
+            borderColor: fCampaign ? '#F97316' : undefined, color: fCampaign ? '#F97316' : undefined, fontWeight: fCampaign ? 600 : 400 }}>
+          <option value="">전체 캠페인</option>
+          {(campaigns || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        {fCampaign && (
+          <button onClick={() => setFCampaign('')}
+            style={{ fontSize: 11, padding: '4px 9px', borderRadius: 7, border: '1px solid #fed7aa',
+              background: '#fff7ed', color: '#ea580c', cursor: 'pointer', fontWeight: 600 }}>
+            ✕
+          </button>
+        )}
+      </div>
+
+      {/* Summary */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
+        {[
+          { label: '업로드된 콘텐츠',  v: withData.length + '개', icon: '🎬', color: '#6366f1' },
+          { label: '총 조회수',         v: fmt(totalV),             icon: '👁',  color: '#2563eb' },
+          { label: '총 클릭 수',        v: fmt(totalCl),            icon: '👆',  color: '#16a34a' },
+          { label: '총 전환 수',        v: fmt(totalCo),            icon: '🛒',  color: '#d97706' },
+        ].map(s => (
+          <div key={s.label} className="card" style={{ padding: '20px 22px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>{s.label}</div>
+                <div className="stat-number" style={{ color: s.color }}>{s.v}</div>
+              </div>
+              <span style={{ fontSize: 26 }}>{s.icon}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Platform performance */}
+      {Object.keys(platPerf).length > 0 && (
+        <div className="card" style={{ padding: '18px 22px', marginBottom: 20 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 14 }}>📺 플랫폼별 성과</div>
+          <table>
+            <thead><tr><th>플랫폼</th><th>콘텐츠 수</th><th>총 조회수</th><th>평균 조회수</th><th>총 클릭</th><th>CTR</th></tr></thead>
+            <tbody>
+              {Object.entries(platPerf).map(([p, d]) => (
+                <tr key={p}>
+                  <td style={{ fontWeight: 500 }}>{p}</td>
+                  <td>{d.count}개</td>
+                  <td style={{ fontWeight: 500 }}>{fmt(d.views)}</td>
+                  <td style={{ color: '#64748b' }}>{fmt(Math.round(d.views / d.count))}</td>
+                  <td>{fmt(d.clicks)}</td>
+                  <td>{d.views > 0 ? ((d.clicks/d.views)*100).toFixed(2) + '%' : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Per-influencer */}
+      <div className="card" style={{ overflow: 'hidden' }}>
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9', fontWeight: 600, fontSize: 14 }}>
+          📊 인플루언서별 성과
+        </div>
+        {withData.length === 0 ? (
+          <div className="empty-state">
+            콘텐츠 관리 탭에서 업로드 URL을 등록하거나 인플루언서 DB의 상세 화면에서<br />조회수/클릭/전환 데이터를 입력해주세요.
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table>
+              <thead><tr>
+                <th>채널명</th><th>플랫폼</th><th>카테고리</th><th>콘텐츠</th><th>조회수</th><th>클릭</th><th>전환</th><th>CTR</th>
+              </tr></thead>
+              <tbody>
+                {[...withData].sort((a,b) => (parseInt(b.views)||0) - (parseInt(a.views)||0)).map(inf => {
+                  const v = parseInt(inf.views)||0;
+                  const cl = parseInt(inf.clicks)||0;
+                  return (
+                    <tr key={inf.id}>
+                      <td><div style={{ fontWeight: 500 }}>{inf.channelName}</div></td>
+                      <td><PBadge platform={inf.platform} /></td>
+                      <td style={{ fontSize: 12, color: '#64748b' }}>{inf.category || '—'}</td>
+                      <td>{inf.contentUrl ? <a href={inf.contentUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#6366f1', fontSize: 12 }}>🔗 보기</a> : '—'}</td>
+                      <td style={{ fontWeight: 500 }}>{fmt(inf.views)}</td>
+                      <td>{fmt(inf.clicks)}</td>
+                      <td style={{ color: '#16a34a', fontWeight: 500 }}>{fmt(inf.conversions)}</td>
+                      <td style={{ color: '#64748b' }}>{v > 0 ? ((cl/v)*100).toFixed(2) + '%' : '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   YOUTUBE SOURCING PAGE
+   ============================================================ */
+const YT_API_KEY_LS = 'speak_yt_api_key';
+const DEFAULT_YT_KEY = 'AIzaSyDsOu2QlY3vqfuufPGWsqNTnv24tgsbVu0';
+/* 잘못된 키가 localStorage에 캐싱된 경우 자동 교정 */
+try {
+  const _stored = localStorage.getItem(YT_API_KEY_LS);
+  if (_stored && JSON.parse(_stored) === 'AIzaSyDsOu2QIY3vqfuufPGWsqNTnv24tgsbVu0') {
+    localStorage.setItem(YT_API_KEY_LS, JSON.stringify(DEFAULT_YT_KEY));
+  }
+} catch(_) {}
+
+/* API 키 관련 오류인지 판별 */
+function isKeyError(msg) {
+  return /keyInvalid|API key not valid|bad request|400/i.test(msg);
+}
+
+const PAGE_SIZE = 20;
+
+function SourcingPage({ onAddToDb }) {
+  const [apiKey] = useLS(YT_API_KEY_LS, DEFAULT_YT_KEY);
+  const [keyword, setKeyword] = useState('');
+  const [category, setCategory] = useState('English education');
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [added, setAdded] = useState({});
+  const [sortBy, setSortBy] = useState('score_desc');
+  const [page, setPage] = useState(0);
+
+  /* 유튜브 채널 검색 (search.list × 2페이지 → channels.list × 청크)
+     YouTube search.list 1회 최대 50개 → nextPageToken으로 2회 요청해 최대 100개 수집 */
+  async function searchYT() {
+    if (!keyword.trim()) return;
+    setLoading(true);
+    setError('');
+    setResults([]);
+    setPage(0);
+    try {
+      const fetchOpts = { referrerPolicy: 'unsafe-url' };
+      const q = encodeURIComponent(keyword);
+      const BASE = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&maxResults=50&q=${q}&key=${apiKey}`;
+
+      /* ── 1단계: search.list 최대 2회 (50 + 50 = 최대 100개 채널 ID 수집) ── */
+      const fetchSearchPage = async (pageToken) => {
+        const url = pageToken ? `${BASE}&pageToken=${pageToken}` : BASE;
+        const res = await fetch(url, fetchOpts);
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(errBody?.error?.message || `HTTP ${res.status}`);
+        }
+        return res.json();
+      };
+
+      const page1 = await fetchSearchPage(null);
+      const ids1 = (page1.items || []).map(it => it.snippet?.channelId || it.id?.channelId).filter(Boolean);
+
+      let ids2 = [];
+      if (page1.nextPageToken) {
+        try {
+          const page2 = await fetchSearchPage(page1.nextPageToken);
+          ids2 = (page2.items || []).map(it => it.snippet?.channelId || it.id?.channelId).filter(Boolean);
+        } catch (_) { /* 2페이지 실패 시 1페이지 결과만 사용 */ }
+      }
+
+      // 중복 제거 후 합산
+      const allIds = [...new Set([...ids1, ...ids2])];
+      if (allIds.length === 0) {
+        setError('검색 결과가 없습니다. 다른 키워드를 시도해보세요.');
+        setLoading(false);
+        return;
+      }
+
+      /* ── 2단계: channels.list — ID 50개씩 청크 분할 요청 ── */
+      const chunkSize = 50;
+      const chunks = [];
+      for (let i = 0; i < allIds.length; i += chunkSize) {
+        chunks.push(allIds.slice(i, i + chunkSize));
+      }
+      const chunkResults = await Promise.all(chunks.map(async (chunk) => {
+        const chUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${chunk.join(',')}&key=${apiKey}`;
+        const res = await fetch(chUrl, fetchOpts);
+        const data = await res.json();
+        return data.items || [];
+      }));
+      const chItems = chunkResults.flat();
+
+      /* ── 3단계: 채널 데이터 → 인플루언서 객체 변환 ── */
+      // 원본 search 순위 복원을 위한 인덱스 맵
+      const rankMap = {};
+      allIds.forEach((id, i) => { rankMap[id] = i; });
+
+      const list = chItems.map(ch => {
+        const stats = ch.statistics || {};
+        const followers = stats.hiddenSubscriberCount ? 0 : parseInt(stats.subscriberCount || '0');
+        const totalViews = parseInt(stats.viewCount || '0');
+        const videoCount = parseInt(stats.videoCount || '1') || 1;
+        const avgViews = Math.round(totalViews / videoCount);
+        const inf = {
+          channelName: ch.snippet.title,
+          handle: ch.snippet.customUrl || ('@' + ch.snippet.title.replace(/\s/g, '')),
+          platform: 'yt_long',
+          followers,
+          avgViews,
+          category,
+          url: `https://www.youtube.com/channel/${ch.id}`,
+          contactEmail: '',
+          contactDM: '',
+          note: '',
+          dbStatus: 'Hold (3순위)',
+          tier: followers >= 100000 ? 'Macro' : followers >= 10000 ? 'Micro' : 'Nano',
+          _ytId: ch.id,
+          _rank: rankMap[ch.id] ?? 999, // 원본 키워드 연관 순위
+          _desc: ch.snippet.description || '',
+          _thumb: ch.snippet.thumbnails?.default?.url || '',
+        };
+        inf._email = extractEmail(inf._desc);
+        if (inf._email) inf.contactEmail = inf._email;
+        inf._score = calcScore(inf);
+        return inf;
+      });
+
+      // _rank 기준 정렬 (기본 순서 = 키워드 연관 높은 순)
+      list.sort((a, b) => a._rank - b._rank);
+      setResults(list);
+    } catch (e) {
+      setError(e.message || '오류가 발생했습니다.');
+    }
+    setLoading(false);
+  }
+
+  function handleAdd(ch) {
+    const newInf = {
+      id: 'inf_yt_' + ch._ytId + '_' + Math.random().toString(36).slice(2,6),
+      channelName:   ch.channelName,
+      handle:        ch.handle,
+      platform:      ch.platform,
+      followers:     ch.followers,
+      avgViews:      ch.avgViews,
+      category:      ch.category,
+      dbStatus:      ch._score >= 70 ? 'Selected (1순위)' : ch._score >= 50 ? 'Reserved (2순위)' : 'Hold (3순위)',
+      note:          ch._desc,
+      contactEmail:  ch.contactEmail || ch._email || extractEmail(ch._desc) || '',
+      contactDM:     '',
+      tier:          ch.tier,
+      url:           ch.url,
+      outreachStatus: '미컨택', outreachDate: '', outreachNote: '',
+      contractStatus: '미발송', contractDate: '', contractAmount: '', contractNote: '',
+      contentStatus:  '미시작', contentUrl: '', contentUploadDate: '', contentNote: '',
+      views: '', clicks: '', conversions: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    onAddToDb(newInf);
+    setAdded(prev => ({ ...prev, [ch._ytId]: true }));
+  }
+
+  const scoreColor = s => s >= 70 ? '#16a34a' : s >= 50 ? '#ca8a04' : '#dc2626';
+
+  /* 정렬 옵션 */
+  const SORT_OPTIONS = [
+    { value: 'score_desc',      label: '점수 높은 순' },
+    { value: 'score_asc',       label: '점수 낮은 순' },
+    { value: 'relevance_desc',  label: '키워드 연관 높은 순' },
+    { value: 'relevance_asc',   label: '키워드 연관 낮은 순' },
+  ];
+
+  const sortedResults = useMemo(() => {
+    const arr = [...results];
+    if      (sortBy === 'score_desc')     arr.sort((a, b) => b._score - a._score);
+    else if (sortBy === 'score_asc')      arr.sort((a, b) => a._score - b._score);
+    else if (sortBy === 'relevance_desc') arr.sort((a, b) => a._rank  - b._rank);
+    else if (sortBy === 'relevance_asc')  arr.sort((a, b) => b._rank  - a._rank);
+    return arr;
+  }, [results, sortBy]);
+
+  const totalPages = Math.ceil(sortedResults.length / PAGE_SIZE);
+  const pagedResults = sortedResults.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  return (
+    <div style={{ padding: '28px 32px', maxWidth: 1100 }}>
+      <div className="section-title">🔍 YouTube 인플루언서 소싱</div>
+      <div className="section-sub">키워드로 유튜브 채널을 검색하고 MD 기준 점수를 자동 계산합니다.</div>
+
+      {/* 검색 바 */}
+      <div className="filter-bar" style={{ gap: 10, marginBottom: 20 }}>
+        <input
+          value={keyword} onChange={e => setKeyword(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && searchYT()}
+          placeholder="키워드 입력 (예: 영어교육, 엄마표, 해외생활, English speaking)"
+          style={{ flex: 1, minWidth: 220 }}
+        />
+        <select value={category} onChange={e => setCategory(e.target.value)} style={{ minWidth: 150 }}>
+          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <button className="btn btn-primary" onClick={searchYT} disabled={loading}>
+          {loading ? '검색 중...' : '🔍 검색'}
+        </button>
+      </div>
+
+      {error && (
+        <div style={{ background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 10, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: '#dc2626' }}>
+          ⚠️ {error}
+        </div>
+      )}
+
+      {loading && (
+        <div className="card" style={{ padding: 40, textAlign: 'center', color: '#6366f1' }}>
+          <div style={{ fontSize: 24, marginBottom: 8 }}>⏳</div>
+          <div style={{ fontSize: 14, fontWeight: 500 }}>YouTube API에서 채널 정보를 가져오는 중...</div>
+        </div>
+      )}
+
+      {results.length > 0 && (
+        <div>
+          {/* 결과 헤더: 건수 + 정렬 */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ fontSize: 13, color: '#64748b' }}>
+              검색 결과 <strong style={{ color: '#374151' }}>{results.length}개</strong>
+              {' '}· 현재 <strong style={{ color: '#6366f1' }}>{page + 1} / {totalPages}</strong> 페이지
+              {results.some(r => isBrandChannel(r.channelName, r._desc)) && (
+                <span style={{ marginLeft: 8, color: '#dc2626', fontSize: 11, fontWeight: 600 }}>
+                  🚫 브랜드/기관 채널 {results.filter(r => isBrandChannel(r.channelName, r._desc)).length}개 감지
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 12, color: '#64748b' }}>정렬</span>
+              <select
+                value={sortBy}
+                onChange={e => { setSortBy(e.target.value); setPage(0); }}
+                style={{ fontSize: 12, padding: '5px 10px', borderRadius: 8, border: '1px solid #e2e8f0', background: 'white', color: '#374151', cursor: 'pointer' }}
+              >
+                {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* 결과 목록 (페이지당 20개) */}
+          <div style={{ display: 'grid', gap: 12 }}>
+            {pagedResults.map((ch) => (
+              <div key={ch._ytId} className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+                {/* 썸네일 */}
+                {ch._thumb
+                  ? <img src={ch._thumb} alt="" style={{ width: 48, height: 48, borderRadius: 24, objectFit: 'cover', flexShrink: 0 }} />
+                  : <div style={{ width: 48, height: 48, borderRadius: 24, background: '#e5e7eb', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>📹</div>
+                }
+
+                {/* 채널 정보 */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{ch.channelName}</div>
+                    <span style={{ fontSize: 11, color: '#64748b' }}>{ch.handle}</span>
+                    <a href={ch.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#6366f1' }}>↗ 채널</a>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 12, color: '#64748b', flexWrap: 'wrap' }}>
+                    <span>👥 {fmt(ch.followers)} 구독</span>
+                    <span>👁️ 평균 {fmt(ch.avgViews)} 조회</span>
+                    <span>📂 {ch.category}</span>
+                    <span style={{ color: ch.tier === 'Macro' ? '#7c3aed' : ch.tier === 'Micro' ? '#2563eb' : '#64748b' }}>🏷️ {ch.tier}</span>
+                  </div>
+                  {/* 이메일 — 있을 경우 강조 표시 */}
+                  {ch._email && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 5,
+                      background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 7,
+                      padding: '3px 9px', fontSize: 12, color: '#065f46', fontWeight: 600 }}>
+                      📧 {ch._email}
+                    </div>
+                  )}
+                  {/* 채널 설명 (앞 120자 미리보기) */}
+                  {ch._desc && (
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {ch._desc.slice(0, 120)}
+                    </div>
+                  )}
+                </div>
+
+                {/* 점수 */}
+                <div style={{ textAlign: 'center', minWidth: 70 }}>
+                  {ch._score === 0 && isBrandChannel(ch.channelName, ch._desc) ? (
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', background: '#fee2e2',
+                      borderRadius: 8, padding: '6px 8px', border: '1px solid #fecaca' }}>
+                      🚫<br/>브랜드<br/>제외
+                    </div>
+                  ) : (
+                    <>
+                      <div style={{ fontSize: 22, fontWeight: 700, color: scoreColor(ch._score) }}>{ch._score}</div>
+                      <div style={{ fontSize: 10, color: '#94a3b8' }}>/ 100</div>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: scoreColor(ch._score), marginTop: 2 }}>
+                        {ch._score >= 70 ? '✅ Selected' : ch._score >= 50 ? '⚡ Reserved' : '⏸ Hold'}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* DB 추가 버튼 */}
+                <div style={{ minWidth: 90 }}>
+                  {added[ch._ytId]
+                    ? <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, textAlign: 'center' }}>✅ DB 추가됨</div>
+                    : <button className="btn btn-primary" style={{ fontSize: 12, width: '100%' }} onClick={() => handleAdd(ch)}>+ DB 추가</button>
+                  }
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 페이지네이션 */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: 20 }}>
+              {/* 페이지 위치 표시 */}
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>
+                <span style={{ color: '#6366f1', fontSize: 15 }}>{page + 1}</span>
+                <span style={{ color: '#94a3b8' }}> / {totalPages} 페이지</span>
+                <span style={{ color: '#94a3b8', fontWeight: 400, marginLeft: 8, fontSize: 12 }}>
+                  ({sortedResults.length}개 결과)
+                </span>
+              </div>
+
+              {/* 버튼 행 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {/* 맨 앞 << */}
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setPage(0)}
+                  disabled={page === 0}
+                  title="맨 앞으로"
+                  style={{ fontSize: 13, padding: '6px 10px', opacity: page === 0 ? 0.35 : 1, fontWeight: 700 }}
+                >
+                  «
+                </button>
+                {/* 이전 */}
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setPage(p => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  style={{ fontSize: 12, padding: '6px 12px', opacity: page === 0 ? 0.35 : 1 }}
+                >
+                  ‹ 이전
+                </button>
+
+                {/* 페이지 번호 버튼 (최대 7개 표시, 현재 페이지 중심) */}
+                {(() => {
+                  const WINDOW = 3; // 현재 페이지 양쪽 3개씩
+                  const start = Math.max(0, Math.min(page - WINDOW, totalPages - WINDOW * 2 - 1));
+                  const end   = Math.min(totalPages, start + WINDOW * 2 + 1);
+                  return Array.from({ length: end - start }, (_, k) => start + k).map(i => (
+                    <button
+                      key={i}
+                      onClick={() => setPage(i)}
+                      style={{
+                        width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer',
+                        fontSize: 12, fontWeight: i === page ? 700 : 500,
+                        background: i === page ? '#6366f1' : '#f1f5f9',
+                        color: i === page ? 'white' : '#374151',
+                        boxShadow: i === page ? '0 2px 8px rgba(99,102,241,0.35)' : 'none',
+                      }}
+                    >
+                      {i + 1}
+                    </button>
+                  ));
+                })()}
+
+                {/* 다음 */}
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                  disabled={page === totalPages - 1}
+                  style={{ fontSize: 12, padding: '6px 12px', opacity: page === totalPages - 1 ? 0.35 : 1 }}
+                >
+                  다음 ›
+                </button>
+                {/* 맨 뒤 >> */}
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setPage(totalPages - 1)}
+                  disabled={page === totalPages - 1}
+                  title="맨 뒤로"
+                  style={{ fontSize: 13, padding: '6px 10px', opacity: page === totalPages - 1 ? 0.35 : 1, fontWeight: 700 }}
+                >
+                  »
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!loading && results.length === 0 && !error && (
+        <div className="empty-state">
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
+          <div style={{ fontWeight: 600, color: '#64748b', marginBottom: 6 }}>키워드로 유튜브 채널을 검색하세요</div>
+          <div style={{ fontSize: 12, color: '#94a3b8' }}>예: "영어 공부", "엄마표 영어", "영어 브이로그", "해외살이"</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
+   CAMPAIGN MANAGEMENT PAGE
+   ============================================================ */
+function CampaignPage({ influencers, campaigns, setCampaigns, updateInf }) {
+  const [view2, setView2] = useState('list'); // 'list' | 'create' | 'detail'
+  const [selected, setSelected] = useState(new Set());
+  const [campaignName, setCampaignName] = useState('');
+  const [campaignGoal, setCampaignGoal] = useState('');
+  const [campaignBudget, setCampaignBudget] = useState('');
+  const [campaignDeadline, setCampaignDeadline] = useState('');
+  const [detailId, setDetailId] = useState(null);
+  const [search, setSearch] = useState('');
+
+  /* 캠페인 상세 뷰 전용 상태 */
+  const [campInfDetailId, setCampInfDetailId] = useState(null); // 사이드 패널 열린 인플루언서 ID
+  const [editMode, setEditMode] = useState(false);              // 편집(삭제) 모드
+  const [editSelected, setEditSelected] = useState(new Set()); // 삭제 선택된 ID들
+  const [campEditingEmail, setCampEditingEmail] = useState(false);
+  const [campEmailDraft, setCampEmailDraft] = useState('');
+
+  const CAMPAIGN_STATUSES = ['기획 중', '진행 중', '완료', '보류'];
+
+  /* 신규 캠페인 저장 */
+  function handleCreateCampaign() {
+    if (!campaignName.trim() || selected.size === 0) return;
+    const now = new Date().toISOString();
+    const newCamp = {
+      id: 'camp_' + Date.now(),
+      name: campaignName,
+      goal: campaignGoal,
+      budget: campaignBudget,
+      deadline: campaignDeadline,
+      status: '기획 중',
+      influencerIds: [...selected],
+      createdAt: now,
+      updatedAt: now,
+      note: '',
+    };
+    setCampaigns(prev => [...prev, newCamp]);
+    setCampaignName(''); setCampaignGoal(''); setCampaignBudget(''); setCampaignDeadline('');
+    setSelected(new Set());
+    setView2('list');
+  }
+
+  const detailCampaign = campaigns.find(c => c.id === detailId);
+  const campInfs = detailCampaign
+    ? influencers.filter(i => detailCampaign.influencerIds.includes(i.id))
+    : [];
+
+  const filteredInf = influencers.filter(i =>
+    (i.dbStatus === 'Selected (1순위)' || i.dbStatus === 'Reserved (2순위)') &&
+    (i.channelName.toLowerCase().includes(search.toLowerCase()) || (i.handle || '').toLowerCase().includes(search.toLowerCase()))
+  );
+
+  if (view2 === 'detail' && detailCampaign) {
+    const campInfDetail = campInfs.find(i => i.id === campInfDetailId);
+
+    /* 편집 모드: 전체 선택 토글 */
+    function toggleAllEdit() {
+      if (editSelected.size === campInfs.length) setEditSelected(new Set());
+      else setEditSelected(new Set(campInfs.map(i => i.id)));
+    }
+
+    /* 캠페인에서 선택된 인플루언서 제거 */
+    function removeSelected() {
+      if (editSelected.size === 0) return;
+      if (!confirm(`선택한 ${editSelected.size}명을 이 캠페인에서 제거할까요?\n(인플루언서 DB에서는 삭제되지 않습니다)`)) return;
+      setCampaigns(prev => prev.map(c =>
+        c.id === detailCampaign.id
+          ? { ...c, influencerIds: c.influencerIds.filter(id => !editSelected.has(id)) }
+          : c
+      ));
+      setEditSelected(new Set());
+      setEditMode(false);
+      if (campInfDetailId && editSelected.has(campInfDetailId)) setCampInfDetailId(null);
+    }
+
+    return (
+      <div style={{ paddingRight: campInfDetail ? 400 : 0, transition: 'padding-right 0.2s' }}>
+        <div style={{ padding: '28px 32px' }}>
+          {/* 헤더 */}
+          <button className="btn btn-secondary" style={{ marginBottom: 20, fontSize: 12 }}
+            onClick={() => { setView2('list'); setEditMode(false); setEditSelected(new Set()); setCampInfDetailId(null); }}>
+            ← 목록으로
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+            <div className="section-title">{detailCampaign.name}</div>
+            <select value={detailCampaign.status}
+              onChange={e => setCampaigns(prev => prev.map(c => c.id === detailCampaign.id ? { ...c, status: e.target.value } : c))}
+              style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6 }}>
+              {CAMPAIGN_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 20 }}>
+            {detailCampaign.goal && <span style={{ marginRight: 16 }}>🎯 {detailCampaign.goal}</span>}
+            {detailCampaign.budget && <span style={{ marginRight: 16 }}>💰 {detailCampaign.budget}</span>}
+            {detailCampaign.deadline && <span>📅 {detailCampaign.deadline}</span>}
+          </div>
+
+          {/* 인플루언서 테이블 */}
+          <div className="card" style={{ overflow: 'hidden', marginBottom: 16 }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>👥 참여 인플루언서 ({campInfs.length}명)</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {editMode ? (
+                  <>
+                    <span style={{ fontSize: 12, color: '#64748b', alignSelf: 'center' }}>{editSelected.size}명 선택</span>
+                    <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={toggleAllEdit}>
+                      {editSelected.size === campInfs.length ? '전체 해제' : '전체 선택'}
+                    </button>
+                    <button className="btn btn-danger" style={{ fontSize: 12 }} onClick={removeSelected} disabled={editSelected.size === 0}>
+                      🗑 삭제 ({editSelected.size})
+                    </button>
+                    <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => { setEditMode(false); setEditSelected(new Set()); }}>
+                      취소
+                    </button>
+                  </>
+                ) : (
+                  <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => setEditMode(true)}>
+                    ✏️ 편집
+                  </button>
+                )}
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  {editMode && <th style={{ width: 36 }}></th>}
+                  <th>#</th>
+                  <th>채널명</th>
+                  <th>플랫폼</th>
+                  <th>카테고리</th>
+                  <th>구독/팔로워</th>
+                  <th>스코어</th>
+                  <th>리치아웃</th>
+                  <th>계약</th>
+                  <th>콘텐츠</th>
+                </tr>
+              </thead>
+              <tbody>
+                {campInfs.map((inf, idx) => (
+                  <tr key={inf.id}
+                    style={{ cursor: editMode ? 'default' : 'pointer',
+                      background: campInfDetailId === inf.id ? '#f5f3ff' : editSelected.has(inf.id) ? '#fef2f2' : 'transparent' }}
+                    onClick={() => { if (!editMode) { setCampInfDetailId(prev => prev === inf.id ? null : inf.id); setCampEditingEmail(false); } }}>
+                    {editMode && (
+                      <td onClick={e => e.stopPropagation()}>
+                        <input type="checkbox" checked={editSelected.has(inf.id)}
+                          onChange={() => setEditSelected(prev => {
+                            const next = new Set(prev);
+                            next.has(inf.id) ? next.delete(inf.id) : next.add(inf.id);
+                            return next;
+                          })}
+                          style={{ cursor: 'pointer', width: 15, height: 15 }} />
+                      </td>
+                    )}
+                    <td style={{ color: '#94a3b8', fontSize: 12 }}>{idx + 1}</td>
+                    <td>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>{inf.channelName}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>{inf.handle}</div>
+                    </td>
+                    <td><PBadge platform={inf.platform} /></td>
+                    <td style={{ fontSize: 12, color: '#64748b' }}>{inf.category || '—'}</td>
+                    <td style={{ fontSize: 12 }}>{fmt(inf.followers)}</td>
+                    <td><ScoreBar score={calcScore(inf)} /></td>
+                    <td onClick={e => e.stopPropagation()}>
+                      <StageSelect value={inf.outreachStatus} options={OUTREACH_STAGES} onChange={v => updateInf(inf.id, { outreachStatus: v })} small />
+                    </td>
+                    <td onClick={e => e.stopPropagation()}>
+                      <StageSelect value={inf.contractStatus} options={CONTRACT_STAGES} onChange={v => updateInf(inf.id, { contractStatus: v })} small />
+                    </td>
+                    <td onClick={e => e.stopPropagation()}>
+                      <StageSelect value={inf.contentStatus} options={CONTENT_STAGES} onChange={v => updateInf(inf.id, { contentStatus: v })} small />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 캠페인 메모 */}
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: '#374151' }}>메모</div>
+            <textarea
+              value={detailCampaign.note || ''}
+              onChange={e => setCampaigns(prev => prev.map(c => c.id === detailCampaign.id ? { ...c, note: e.target.value } : c))}
+              rows={4} style={{ width: '100%', borderRadius: 10 }}
+              placeholder="캠페인 관련 메모..."
+            />
+          </div>
+        </div>
+
+        {/* ── 인플루언서 사이드 패널 (Influencer DB와 동일한 구조) ── */}
+        {campInfDetail && (
+          <div className="side-panel">
+            <div style={{ padding: '18px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'white', zIndex: 1 }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>{campInfDetail.channelName}</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{campInfDetail.handle}</div>
+              </div>
+              <button onClick={() => { setCampInfDetailId(null); setCampEditingEmail(false); }}
+                style={{ background: '#f1f5f9', border: 'none', width: 28, height: 28, borderRadius: 8, cursor: 'pointer', fontSize: 14, color: '#64748b' }}>✕</button>
+            </div>
+            <div style={{ padding: '18px 20px' }}>
+              {/* 기본 정보 */}
+              <div style={{ background: '#f8fafc', borderRadius: 10, padding: 14, marginBottom: 14 }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                  <PBadge platform={campInfDetail.platform} />
+                  <Badge label={campInfDetail.dbStatus} />
+                  {campInfDetail.tier && <span className="badge" style={{ background: '#fef9c3', color: '#92400e' }}>{campInfDetail.tier}</span>}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 12 }}>
+                  <div><div style={{ color: '#94a3b8', fontSize: 10, marginBottom: 2 }}>팔로워</div><strong>{fmt(campInfDetail.followers)}</strong></div>
+                  <div><div style={{ color: '#94a3b8', fontSize: 10, marginBottom: 2 }}>평균뷰</div><strong>{fmt(campInfDetail.avgViews)}</strong></div>
+                  <div><div style={{ color: '#94a3b8', fontSize: 10, marginBottom: 2 }}>스코어</div><strong style={{ color: calcScore(campInfDetail) >= 70 ? '#16a34a' : '#ca8a04' }}>{calcScore(campInfDetail)}점</strong></div>
+                </div>
+                {campInfDetail.url && (
+                  <a href={campInfDetail.url} target="_blank" rel="noopener noreferrer"
+                    style={{ display: 'block', marginTop: 10, fontSize: 12, color: '#6366f1', textDecoration: 'none', background: '#eef2ff', padding: '6px 10px', borderRadius: 7 }}>
+                    🔗 채널 바로가기
+                  </a>
+                )}
+              </div>
+
+              {/* 연락처 */}
+              <div style={{ marginBottom: 14, fontSize: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <div style={{ fontWeight: 600, color: '#374151' }}>📬 연락처</div>
+                  {!campEditingEmail && (
+                    <button onClick={() => { setCampEmailDraft(campInfDetail.contactEmail || extractEmail(campInfDetail.note || '') || ''); setCampEditingEmail(true); }}
+                      style={{ fontSize: 10, padding: '2px 9px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', color: '#6366f1', fontWeight: 600 }}>
+                      ✏️ {campInfDetail.contactEmail ? '수정' : '입력'}
+                    </button>
+                  )}
+                </div>
+                {campEditingEmail ? (
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input autoFocus value={campEmailDraft} onChange={e => setCampEmailDraft(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { updateInf(campInfDetail.id, { contactEmail: campEmailDraft }); setCampEditingEmail(false); } if (e.key === 'Escape') setCampEditingEmail(false); }}
+                      placeholder="이메일 주소 입력" style={{ flex: 1, fontSize: 12, padding: '5px 9px' }} />
+                    <button onClick={() => { updateInf(campInfDetail.id, { contactEmail: campEmailDraft }); setCampEditingEmail(false); }}
+                      style={{ fontSize: 11, padding: '5px 10px', borderRadius: 7, border: 'none', background: '#6366f1', color: 'white', cursor: 'pointer', fontWeight: 600 }}>저장</button>
+                    <button onClick={() => setCampEditingEmail(false)}
+                      style={{ fontSize: 11, padding: '5px 8px', borderRadius: 7, border: '1px solid #e2e8f0', background: 'white', color: '#64748b', cursor: 'pointer' }}>취소</button>
+                  </div>
+                ) : (campInfDetail.contactEmail || extractEmail(campInfDetail.note || '')) ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: 7, padding: '5px 10px', color: '#065f46', fontWeight: 600 }}>
+                    📧 {campInfDetail.contactEmail || extractEmail(campInfDetail.note || '')}
+                    <button onClick={() => navigator.clipboard.writeText(campInfDetail.contactEmail || extractEmail(campInfDetail.note || ''))}
+                      style={{ marginLeft: 'auto', fontSize: 10, padding: '2px 7px', borderRadius: 5, border: '1px solid #6ee7b7', background: 'white', cursor: 'pointer', color: '#065f46' }}>복사</button>
+                  </div>
+                ) : (
+                  <div style={{ color: '#9ca3af' }}>등록된 연락처 없음</div>
+                )}
+              </div>
+
+              {/* 노트 */}
+              {campInfDetail.note && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>📝 원본 노트</div>
+                  <div style={{ background: '#fffbeb', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: '#92400e', border: '1px solid #fde68a' }}>{campInfDetail.note}</div>
+                </div>
+              )}
+
+              {/* 상태 변경 */}
+              {[
+                { label: '📤 리치아웃 상태', field: 'outreachStatus', options: OUTREACH_STAGES },
+                { label: '📄 계약 상태',     field: 'contractStatus', options: CONTRACT_STAGES },
+                { label: '🎬 콘텐츠 상태',   field: 'contentStatus',  options: CONTENT_STAGES },
+              ].map(item => (
+                <div key={item.field} style={{ marginBottom: 12 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>{item.label}</label>
+                  <StageSelect value={campInfDetail[item.field]} options={item.options} onChange={v => updateInf(campInfDetail.id, { [item.field]: v })} />
+                </div>
+              ))}
+
+              {/* 운영 메모 */}
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>💬 운영 메모</label>
+                <textarea value={campInfDetail.outreachNote || ''} onChange={e => updateInf(campInfDetail.id, { outreachNote: e.target.value })}
+                  placeholder="컨택, 계약, 콘텐츠 관련 메모..." style={{ width: '100%', height: 72, resize: 'vertical' }} />
+              </div>
+
+              {/* 캠페인에서 제거 */}
+              <button className="btn btn-danger" style={{ width: '100%', marginTop: 8 }}
+                onClick={() => {
+                  if (!confirm(`${campInfDetail.channelName}을 이 캠페인에서 제거할까요?`)) return;
+                  setCampaigns(prev => prev.map(c =>
+                    c.id === detailCampaign.id
+                      ? { ...c, influencerIds: c.influencerIds.filter(id => id !== campInfDetail.id) }
+                      : c
+                  ));
+                  setCampInfDetailId(null);
+                }}>
+                🗑 캠페인에서 제거
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (view2 === 'create') {
+    return (
+      <div style={{ padding: '28px 32px', maxWidth: 1000 }}>
+        <button className="btn btn-secondary" style={{ marginBottom: 20, fontSize: 12 }} onClick={() => setView2('list')}>← 목록으로</button>
+        <div className="section-title">🚀 새 캠페인 만들기</div>
+        <div className="section-sub">참여할 인플루언서를 선택하고 캠페인을 생성합니다.</div>
+
+        {/* 캠페인 기본 정보 */}
+        <div className="card" style={{ padding: '20px 22px', marginBottom: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#374151' }}>캠페인 이름 *</div>
+              <input value={campaignName} onChange={e => setCampaignName(e.target.value)} placeholder="예: 2026 Q2 영어교육 캠페인" style={{ width: '100%' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#374151' }}>목표</div>
+              <input value={campaignGoal} onChange={e => setCampaignGoal(e.target.value)} placeholder="예: 신규 구독자 5,000명 유입" style={{ width: '100%' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#374151' }}>예산</div>
+              <input value={campaignBudget} onChange={e => setCampaignBudget(e.target.value)} placeholder="예: $3,000" style={{ width: '100%' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, color: '#374151' }}>마감일</div>
+              <input type="date" value={campaignDeadline} onChange={e => setCampaignDeadline(e.target.value)} style={{ width: '100%' }} />
+            </div>
+          </div>
+        </div>
+
+        {/* 인플루언서 선택 */}
+        <div className="card" style={{ overflow: 'hidden', marginBottom: 20 }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>인플루언서 선택 <span style={{ color: '#6366f1', fontSize: 12 }}>({selected.size}명 선택)</span></div>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="채널명 검색..." style={{ fontSize: 12, padding: '5px 10px', width: 180 }} />
+          </div>
+          <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+            {filteredInf.length === 0 ? (
+              <div className="empty-state" style={{ padding: 30 }}>인플루언서 DB에서 Selected/Reserved 채널을 먼저 등록해주세요.</div>
+            ) : (
+              <table>
+                <thead><tr>
+                  <th style={{ width: 40 }}><input type="checkbox" checked={filteredInf.every(i => selected.has(i.id))} onChange={e => {
+                    if (e.target.checked) setSelected(new Set(filteredInf.map(i => i.id)));
+                    else setSelected(new Set());
+                  }} /></th>
+                  <th>채널명</th><th>플랫폼</th><th>카테고리</th><th>구독자</th><th>점수</th>
+                </tr></thead>
+                <tbody>
+                  {filteredInf.map(inf => (
+                    <tr key={inf.id} onClick={() => setSelected(prev => { const n = new Set(prev); n.has(inf.id) ? n.delete(inf.id) : n.add(inf.id); return n; })} style={{ cursor: 'pointer' }}>
+                      <td><input type="checkbox" checked={selected.has(inf.id)} onChange={() => {}} /></td>
+                      <td style={{ fontWeight: 500 }}>{inf.channelName}</td>
+                      <td><PBadge platform={inf.platform} /></td>
+                      <td style={{ fontSize: 12, color: '#64748b' }}>{inf.category || '—'}</td>
+                      <td style={{ fontSize: 12 }}>{fmt(inf.followers)}</td>
+                      <td><ScoreBar score={calcScore(inf)} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn btn-primary" onClick={handleCreateCampaign} disabled={!campaignName.trim() || selected.size === 0}>
+            🚀 캠페인 생성 ({selected.size}명)
+          </button>
+          <button className="btn btn-secondary" onClick={() => setView2('list')}>취소</button>
+        </div>
+      </div>
+    );
+  }
+
+  /* 캠페인 목록 */
+  const CAMP_COLORS = { '기획 중': { bg: '#ede9fe', color: '#6d28d9' }, '진행 중': { bg: '#dcfce7', color: '#15803d' }, '완료': { bg: '#dbeafe', color: '#1d4ed8' }, '보류': { bg: '#f3f4f6', color: '#6b7280' } };
+
+  return (
+    <div style={{ padding: '28px 32px', maxWidth: 1000 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 22 }}>
+        <div>
+          <div className="section-title">🚀 캠페인 관리</div>
+          <div className="section-sub">인플루언서를 묶어 캠페인을 생성하고 진행 상황을 추적합니다.</div>
+        </div>
+        <button className="btn btn-primary" onClick={() => setView2('create')}>+ 새 캠페인</button>
+      </div>
+
+      {campaigns.length === 0 ? (
+        <div className="empty-state" style={{ padding: 80 }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🚀</div>
+          <div style={{ fontWeight: 600, color: '#374151', marginBottom: 6 }}>아직 생성된 캠페인이 없습니다</div>
+          <div style={{ fontSize: 12, color: '#94a3b8' }}>오른쪽 위의 '새 캠페인' 버튼을 눌러 첫 캠페인을 만들어보세요.</div>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gap: 14 }}>
+          {campaigns.map(camp => {
+            const campInfsLocal = influencers.filter(i => camp.influencerIds.includes(i.id));
+            const contracted = campInfsLocal.filter(i => i.contractStatus === '서명 완료').length;
+            const uploaded = campInfsLocal.filter(i => ['업로드 완료','검수 완료','승인'].includes(i.contentStatus)).length;
+            const sc2 = CAMP_COLORS[camp.status] || { bg: '#f3f4f6', color: '#374151' };
+            return (
+              <div key={camp.id} className="card" style={{ padding: '18px 22px', cursor: 'pointer' }} onClick={() => { setDetailId(camp.id); setView2('detail'); }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15 }}>{camp.name}</div>
+                      <span className="badge" style={{ background: sc2.bg, color: sc2.color }}>{camp.status}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#64748b', flexWrap: 'wrap' }}>
+                      <span>👥 인플루언서 {campInfsLocal.length}명</span>
+                      {camp.goal && <span>🎯 {camp.goal}</span>}
+                      {camp.budget && <span>💰 {camp.budget}</span>}
+                      {camp.deadline && <span>📅 마감 {camp.deadline}</span>}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 20, textAlign: 'center' }}>
+                    <div><div style={{ fontSize: 18, fontWeight: 700, color: '#2563eb' }}>{contracted}</div><div style={{ fontSize: 10, color: '#64748b' }}>계약완료</div></div>
+                    <div><div style={{ fontSize: 18, fontWeight: 700, color: '#16a34a' }}>{uploaded}</div><div style={{ fontSize: 10, color: '#64748b' }}>업로드</div></div>
+                  </div>
+                </div>
+                <div style={{ marginTop: 12, height: 4, background: '#f1f5f9', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: campInfsLocal.length > 0 ? (uploaded / campInfsLocal.length * 100) + '%' : '0%', background: '#16a34a', borderRadius: 2, transition: 'width 0.3s' }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
+   AUTO OUTREACH (아웃리치 자동화) PAGE
+   ============================================================ */
+function AutoMailPage({ influencers }) {
+  const TEMPLATES = {
+    initial: {
+      label: '초기 컨택 (협업 제안)',
+      subject: '[Speak] {{channelName}} 채널 파트너십 제안드립니다',
+      body: `안녕하세요 {{channelName}} 님,
+
+저는 영어 학습 앱 Speak의 파트너십 팀에서 연락드리는 진형이라고 합니다.
+
+{{channelName}} 채널에서 {{category}} 관련 콘텐츠를 꾸준히 제작하시는 것을 인상 깊게 보았습니다. 구독자분들께서도 영어 학습에 관심이 높으실 것 같아 연락드리게 되었습니다.
+
+Speak은 AI 기반 영어 스피킹 학습 앱으로, 실제 원어민과 대화하는 것처럼 영어 회화를 연습할 수 있는 서비스입니다.
+
+채널 특성에 맞는 협업 방식으로 파트너십을 진행하고 싶습니다. 관심이 있으시다면 아래로 연락 주시면 감사하겠습니다.
+
+감사합니다.
+진형 드림
+Speak Partnerships Team
+jinhyeong.l@usespeak.com`,
+    },
+    followup: {
+      label: '팔로우업 (미응답 후)',
+      subject: '[Speak] 파트너십 제안 다시 한번 드립니다 - {{channelName}}',
+      body: `안녕하세요 {{channelName}} 님,
+
+지난번에 파트너십 관련하여 연락드렸던 Speak 파트너십팀 진형입니다.
+
+바쁘신 와중에 연락이 어려우실 수 있다는 점 이해합니다. 혹시 제안서나 추가 정보가 필요하시다면 언제든 말씀해 주세요.
+
+Speak 앱을 직접 체험해보실 수 있는 프리미엄 무료 체험 기회도 드릴 수 있습니다.
+
+한 번쯤 미팅을 가져볼 수 있을까요? 편하신 시간에 30분 정도 이야기 나누고 싶습니다.
+
+감사합니다.
+진형 드림`,
+    },
+    interested: {
+      label: '관심 표명 후 디테일 전달',
+      subject: '[Speak] 협업 상세 안내 및 다음 단계 - {{channelName}}',
+      body: `안녕하세요 {{channelName}} 님,
+
+관심 가져주셔서 정말 감사합니다!
+
+Speak 파트너십의 주요 내용을 간략히 안내드립니다:
+
+📌 협업 형태: 유튜브 영상 내 Speak 소개 (60~90초 스팟 광고)
+💰 보상: 구독자 규모 및 조회수 기반 협의 (+ 추가 성과 보너스)
+🎁 혜택: Speak 프리미엄 1년 무료 + 전용 할인 코드 제공
+📅 일정: 양측 합의 후 2~3주 내 콘텐츠 제작
+
+계약서는 영문/국문 모두 준비되어 있으며, 콘텐츠 방향은 채널 스타일에 맞게 자유롭게 조율 가능합니다.
+
+다음 단계로 간단한 화상 미팅을 제안드립니다. 편하신 시간을 알려주시면 캘린더 링크 보내드리겠습니다.
+
+감사합니다!
+진형 드림`,
+    },
+  };
+
+  const [tmplKey, setTmplKey] = useState('initial');
+  const [selectedInfId, setSelectedInfId] = useState('');
+  const [customSubj, setCustomSubj] = useState('');
+  const [customBody, setCustomBody] = useState('');
+  const [copied, setCopied] = useState('');
+
+  const tmpl = TEMPLATES[tmplKey];
+
+  /* 인플루언서 선택 시 템플릿 채우기 */
+  const selInf = influencers.find(i => i.id === selectedInfId);
+
+  function fillTemplate(str) {
+    if (!selInf) return str;
+    return str
+      .replace(/{{channelName}}/g, selInf.channelName || '')
+      .replace(/{{handle}}/g, selInf.handle || '')
+      .replace(/{{category}}/g, selInf.category || '콘텐츠')
+      .replace(/{{followers}}/g, fmt(selInf.followers))
+      .replace(/{{platform}}/g, PLATFORMS[selInf.platform]?.label || selInf.platform);
+  }
+
+  useEffect(() => {
+    if (!selInf) { setCustomSubj(tmpl.subject); setCustomBody(tmpl.body); return; }
+    setCustomSubj(fillTemplate(tmpl.subject));
+    setCustomBody(fillTemplate(tmpl.body));
+  }, [tmplKey, selectedInfId]);
+
+  function copy(text, key) {
+    navigator.clipboard.writeText(text).then(() => { setCopied(key); setTimeout(() => setCopied(''), 2000); });
+  }
+
+  /* Gmail mailto 링크 열기 */
+  function openGmail() {
+    if (!selInf?.contactEmail) return alert('선택한 인플루언서에 이메일이 없습니다.\n인플루언서 DB에서 이메일을 먼저 등록해주세요.');
+    const url = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(selInf.contactEmail)}&su=${encodeURIComponent(customSubj)}&body=${encodeURIComponent(customBody)}`;
+    window.open(url, '_blank');
+  }
+
+  const targetInfs = influencers.filter(i => !['Drop', '거절'].includes(i.dbStatus));
+
+  return (
+    <div style={{ padding: '28px 32px', maxWidth: 1000 }}>
+      <div className="section-title">✉️ 아웃리치 자동화</div>
+      <div className="section-sub">인플루언서별 맞춤 이메일 템플릿을 생성하고 Gmail로 전송합니다.</div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 20 }}>
+        {/* 왼쪽: 설정 */}
+        <div>
+          {/* 템플릿 선택 */}
+          <div className="card" style={{ padding: 16, marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 10 }}>📝 템플릿 선택</div>
+            {Object.entries(TEMPLATES).map(([k, t]) => (
+              <button key={k} onClick={() => setTmplKey(k)}
+                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', marginBottom: 4,
+                  background: tmplKey === k ? '#ede9fe' : '#f8fafc', color: tmplKey === k ? '#6d28d9' : '#374151', fontWeight: tmplKey === k ? 600 : 400, fontSize: 12 }}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* 인플루언서 선택 */}
+          <div className="card" style={{ padding: 16 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 10 }}>👤 인플루언서 선택</div>
+            <select value={selectedInfId} onChange={e => setSelectedInfId(e.target.value)} style={{ width: '100%', fontSize: 12 }}>
+              <option value="">-- 선택 --</option>
+              {targetInfs.map(i => <option key={i.id} value={i.id}>{i.channelName}</option>)}
+            </select>
+            {selInf && (
+              <div style={{ marginTop: 10, fontSize: 11, color: '#64748b' }}>
+                <div>📧 {selInf.contactEmail || '이메일 미등록'}</div>
+                <div>📱 {selInf.contactDM || 'DM 미등록'}</div>
+                <div>📊 리치아웃: {selInf.outreachStatus}</div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 오른쪽: 에디터 */}
+        <div>
+          <div className="card" style={{ padding: 18, marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>제목</div>
+              <button onClick={() => copy(customSubj, 'subj')} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', color: copied === 'subj' ? '#16a34a' : '#374151' }}>
+                {copied === 'subj' ? '✅ 복사됨' : '복사'}
+              </button>
+            </div>
+            <input value={customSubj} onChange={e => setCustomSubj(e.target.value)} style={{ width: '100%' }} />
+          </div>
+
+          <div className="card" style={{ padding: 18, marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>본문</div>
+              <button onClick={() => copy(customBody, 'body')} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', color: copied === 'body' ? '#16a34a' : '#374151' }}>
+                {copied === 'body' ? '✅ 복사됨' : '복사'}
+              </button>
+            </div>
+            <textarea value={customBody} onChange={e => setCustomBody(e.target.value)} rows={16} style={{ width: '100%', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.7 }} />
+          </div>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="btn btn-primary" onClick={openGmail}>
+              📨 Gmail로 열기
+            </button>
+            <button className="btn btn-secondary" onClick={() => copy(customSubj + '\n\n' + customBody, 'all')}>
+              {copied === 'all' ? '✅ 모두 복사됨' : '📋 전체 복사'}
+            </button>
+          </div>
+          {!selInf?.contactEmail && selInf && (
+            <div style={{ marginTop: 10, fontSize: 11, color: '#f59e0b' }}>⚠️ 이메일이 없습니다. 인플루언서 DB에서 contactEmail을 먼저 등록해주세요.</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   APP ROOT
+   ============================================================ */
+function App() {
+  const [influencers, setInfluencers] = useLS('speak_hub_v2', []);
+  const [campaigns, setCampaigns] = useLS('speak_campaigns_v1', []);
+  const [view, setView] = useState('dashboard');
+
+  const updateInf = useCallback((id, updates) => {
+    setInfluencers(prev =>
+      prev.map(i => i.id === id ? { ...i, ...updates, updatedAt: new Date().toISOString() } : i)
+    );
+  }, []);
+
+  const deleteInf = useCallback((id) => {
+    setInfluencers(prev => prev.filter(i => i.id !== id));
+  }, []);
+
+  /* 다중 삭제 */
+  const bulkDeleteInf = useCallback((ids) => {
+    setInfluencers(prev => prev.filter(i => !ids.has(i.id)));
+  }, []);
+
+  /* 소싱 페이지에서 단건 인플루언서 추가 */
+  const addSingleInf = useCallback((newInf) => {
+    setInfluencers(prev => {
+      const exists = prev.some(i => i.handle === newInf.handle || i.channelName === newInf.channelName);
+      if (exists) return prev.map(i => (i.handle === newInf.handle || i.channelName === newInf.channelName) ? { ...i, ...newInf, id: i.id } : i);
+      return [...prev, newInf];
+    });
+  }, []);
+
+  const handleImport = useCallback((newData) => {
+    setInfluencers(prev => {
+      // 기존 인플루언서 맵 (handle 또는 channelName 기준)
+      const existMap = {};
+      prev.forEach(i => { existMap[i.handle || i.channelName] = i; });
+      // 새 데이터 처리: 중복이면 워크플로우 상태 보존하며 업데이트, 신규면 추가
+      const updated = { ...existMap };
+      newData.forEach(nd => {
+        const key = nd.handle || nd.channelName;
+        const ex = existMap[key];
+        if (ex) {
+          // 기존 항목 업데이트 (워크플로우 상태 보존, source는 csv 유지)
+          updated[key] = { ...ex, ...nd, id: ex.id, source: 'csv',
+            outreachStatus: ex.outreachStatus, outreachDate: ex.outreachDate, outreachNote: ex.outreachNote,
+            contractStatus: ex.contractStatus, contractDate: ex.contractDate, contractAmount: ex.contractAmount, contractNote: ex.contractNote,
+            contentStatus: ex.contentStatus, contentUrl: ex.contentUrl, contentUploadDate: ex.contentUploadDate, contentNote: ex.contentNote,
+            views: ex.views, clicks: ex.clicks, conversions: ex.conversions,
+          };
+        } else {
+          // 신규 항목 추가
+          updated[key] = { ...nd, source: 'csv' };
+        }
+      });
+      // 기존 순서 보존 + 신규 항목 뒤에 추가
+      const existKeys = prev.map(i => i.handle || i.channelName);
+      const newKeys = Object.keys(updated).filter(k => !existKeys.includes(k));
+      return [
+        ...prev.map(i => updated[i.handle || i.channelName] || i),
+        ...newKeys.map(k => updated[k]),
+      ];
+    });
+  }, []);
+
+  const stats = useMemo(() => ({
+    total: influencers.length,
+    outreachActive: influencers.filter(i => !['미컨택','거절'].includes(i.outreachStatus)).length,
+    contracted: influencers.filter(i => i.contractStatus === '서명 완료').length,
+    contentActive: influencers.filter(i => !['미시작'].includes(i.contentStatus) && i.contractStatus === '서명 완료').length,
+    campaignCount: campaigns.length,
+  }), [influencers, campaigns]);
+
+  const pages = {
+    dashboard: <Dashboard influencers={influencers} />,
+    sourcing:  <SourcingPage onAddToDb={addSingleInf} />,
+    campaigns: <CampaignPage influencers={influencers} campaigns={campaigns} setCampaigns={setCampaigns} updateInf={updateInf} />,
+    db:        <InfluencerDB influencers={influencers} updateInf={updateInf} onImport={handleImport} onDelete={deleteInf} onBulkDelete={bulkDeleteInf} />,
+    outreach:  <OutreachPage influencers={influencers} campaigns={campaigns} updateInf={updateInf} />,
+    contract:  <ContractPage influencers={influencers} campaigns={campaigns} updateInf={updateInf} />,
+    content:   <ContentPage influencers={influencers} campaigns={campaigns} updateInf={updateInf} />,
+    analytics: <AnalyticsPage influencers={influencers} campaigns={campaigns} />,
+  };
+
+  return (
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <Sidebar view={view} setView={setView} stats={stats} />
+      <div style={{ marginLeft: 230, flex: 1, minHeight: '100vh', overflow: 'auto' }}>
+        {pages[view]}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
