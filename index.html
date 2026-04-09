@@ -486,6 +486,7 @@ function Dashboard({ influencers }) {
    INFLUENCER DB
    ============================================================ */
 function InfluencerDB({ influencers, updateInf, onImport, onDelete, onBulkDelete }) {
+  const [dbMainTab, setDbMainTab] = useState('list'); // 'list' | 'blacklist'
   const [dbSubTab, setDbSubTab] = useState('platform'); // 'platform' | 'csv'
   const [platformSearch, setPlatformSearch] = useState('');
   const [csvSearch, setCsvSearch] = useState('');
@@ -510,10 +511,12 @@ function InfluencerDB({ influencers, updateInf, onImport, onDelete, onBulkDelete
   const [importLoading, setImportLoading] = useState(false);
   const [fileImportName, setFileImportName] = useState('');
 
-  // 소싱 인원: platform에서 추가 (source 없거나 'platform')
-  // 외부 추가 인원: CSV로 추가 (source === 'csv')
-  const platformInfs = useMemo(() => influencers.filter(i => !i.source || i.source === 'platform'), [influencers]);
-  const csvInfs      = useMemo(() => influencers.filter(i => i.source === 'csv'), [influencers]);
+  // 소싱 인원: platform에서 추가 (source 없거나 'platform'), 블랙리스트 제외
+  // 외부 추가 인원: CSV로 추가 (source === 'csv'), 블랙리스트 제외
+  // 블랙리스트: isBlacklisted === true
+  const platformInfs   = useMemo(() => influencers.filter(i => (!i.source || i.source === 'platform') && !i.isBlacklisted), [influencers]);
+  const csvInfs        = useMemo(() => influencers.filter(i => i.source === 'csv' && !i.isBlacklisted), [influencers]);
+  const blacklistInfs  = useMemo(() => influencers.filter(i => i.isBlacklisted), [influencers]);
 
   function applySort(r) {
     return r.sort((a, b) => {
@@ -545,6 +548,13 @@ function InfluencerDB({ influencers, updateInf, onImport, onDelete, onBulkDelete
     r = applyCommonFilters(r);
     return applySort(r);
   }, [csvInfs, csvSearch, fPlatform, fCategory, fStatus, fTier, sortBy, sortDir]);
+
+  const [blacklistSearch, setBlacklistSearch] = useState('');
+  const filteredBlacklist = useMemo(() => {
+    let r = [...blacklistInfs];
+    if (blacklistSearch) r = r.filter(i => i.channelName.toLowerCase().includes(blacklistSearch.toLowerCase()) || (i.handle || '').toLowerCase().includes(blacklistSearch.toLowerCase()) || (i.category || '').toLowerCase().includes(blacklistSearch.toLowerCase()));
+    return applySort(r);
+  }, [blacklistInfs, blacklistSearch, sortBy, sortDir]);
 
   // 현재 서브탭 기준 filtered (exportCSV 등 호환용)
   const filtered = dbSubTab === 'platform' ? filteredPlatform : filteredCsv;
@@ -792,6 +802,12 @@ function InfluencerDB({ influencers, updateInf, onImport, onDelete, onBulkDelete
                 style={{ background: detailId === inf.id ? '#e0e7ff' : '#f8fafc', color: detailId === inf.id ? '#6366f1' : '#374151', border: '1px solid ' + (detailId === inf.id ? '#c7d2fe' : '#e5e7eb'), padding: '4px 10px', borderRadius: 7, fontSize: 12, cursor: 'pointer' }}>
                 상세
               </button>
+              <button
+                title="블랙리스트에 추가"
+                onClick={() => { updateInf(inf.id, { isBlacklisted: true }); setDbMainTab('blacklist'); }}
+                style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5', padding: '4px 8px', borderRadius: 7, fontSize: 12, cursor: 'pointer' }}>
+                🚫
+              </button>
             </div>
           </td>
         </tr>
@@ -835,6 +851,60 @@ function InfluencerDB({ influencers, updateInf, onImport, onDelete, onBulkDelete
     );
   }
 
+  function renderBlacklistRows(list) {
+    return list.map((inf, idx) => (
+      <tr key={inf.id}>
+        <td style={{ color: '#94a3b8', fontSize: 12 }}>{idx + 1}</td>
+        <td>
+          <div style={{ fontWeight: 500, color: '#0f172a' }}>
+            {inf.url
+              ? <a href={inf.url} target="_blank" rel="noopener noreferrer"
+                  style={{ color: 'inherit', textDecoration: 'none' }}>{inf.channelName}</a>
+              : inf.channelName}
+          </div>
+          <div style={{ color: '#94a3b8', fontSize: 11 }}>{inf.handle || '—'}</div>
+        </td>
+        <td><PBadge platform={inf.platform} /></td>
+        <td style={{ fontWeight: 500 }}>{fmt(inf.followers)}</td>
+        <td style={{ color: '#64748b' }}>{fmt(inf.avgViews)}</td>
+        <td style={{ fontSize: 12, color: '#64748b' }}>{inf.category || '—'}</td>
+        <td><Badge label={inf.dbStatus} /></td>
+        <td>
+          <button
+            onClick={() => { if (window.confirm(inf.channelName + '을(를) 블랙리스트에서 해제할까요?')) updateInf(inf.id, { isBlacklisted: false }); }}
+            style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #86efac', padding: '4px 10px', borderRadius: 7, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            ↩ 리스트 복원
+          </button>
+        </td>
+      </tr>
+    ));
+  }
+
+  function renderBlacklistTable(list) {
+    if (!list.length) return (
+      <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8', fontSize: 13 }}>블랙리스트에 등록된 인플루언서가 없습니다.</div>
+    );
+    return (
+      <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '60vh' }}>
+        <table>
+          <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: '#f8fafc' }}>
+            <tr>
+              <th style={{ width: 40 }}>#</th>
+              <SortTh col="name" label="채널명" />
+              <th>플랫폼</th>
+              <SortTh col="followers" label="팔로워" />
+              <SortTh col="views" label="평균뷰" />
+              <th>카테고리</th>
+              <th>DB 상태</th>
+              <th>액션</th>
+            </tr>
+          </thead>
+          <tbody>{renderBlacklistRows(list)}</tbody>
+        </table>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: 28, paddingRight: detail ? 420 : 28 }}>
       {/* 헤더 */}
@@ -842,7 +912,7 @@ function InfluencerDB({ influencers, updateInf, onImport, onDelete, onBulkDelete
         <div>
           <div className="section-title">인플루언서 DB</div>
           <div className="section-sub">
-            플랫폼 소싱 {platformInfs.length}명 · 외부 추가 {csvInfs.length}명 (전체 {influencers.length}명)
+            플랫폼 소싱 {platformInfs.length}명 · 외부 추가 {csvInfs.length}명 · 블랙리스트 {blacklistInfs.length}명 (전체 {influencers.length}명)
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
@@ -871,76 +941,111 @@ function InfluencerDB({ influencers, updateInf, onImport, onDelete, onBulkDelete
         </div>
       </div>
 
-      {/* 공통 필터 (플랫폼/카테고리/상태) */}
-      <div className="filter-bar">
-        <select value={fPlatform} onChange={e=>setFPlatform(e.target.value)}>
-          <option value="">전체 플랫폼</option>
-          {Object.entries(PLATFORMS).map(([k,v]) => <option key={k} value={k}>{v.emoji} {v.label}</option>)}
-        </select>
-        <select value={fCategory} onChange={e=>setFCategory(e.target.value)}>
-          <option value="">전체 카테고리</option>
-          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select value={fStatus} onChange={e=>setFStatus(e.target.value)}>
-          <option value="">전체 상태</option>
-          {DB_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        {(fPlatform||fCategory||fStatus||fTier) &&
-          <button className="btn btn-secondary" onClick={()=>{setFPlatform('');setFCategory('');setFStatus('');setFTier('');}}>✕ 필터 초기화</button>}
-      </div>
-
-      {/* 서브탭 */}
-      <div style={{ display: 'flex', gap: 0, marginBottom: 0, borderBottom: '2px solid #e5e7eb' }}>
+      {/* ── 메인 탭: 인플루언서 리스트 / 블랙리스트 ── */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, marginTop: 4 }}>
         {[
-          { key: 'platform', label: '🎯 플랫폼 내 소싱 인원', count: platformInfs.length },
-          { key: 'csv',      label: '📥 외부 추가 인원',       count: csvInfs.length },
-        ].map(tab => (
-          <button key={tab.key} onClick={() => setDbSubTab(tab.key)}
-            style={{ padding: '10px 22px', fontSize: 13, fontWeight: dbSubTab === tab.key ? 700 : 400,
-              background: 'none', border: 'none', cursor: 'pointer',
-              borderBottom: dbSubTab === tab.key ? '2px solid #6366f1' : '2px solid transparent',
-              color: dbSubTab === tab.key ? '#6366f1' : '#64748b',
-              marginBottom: -2 }}>
-            {tab.label}
-            <span style={{ marginLeft: 6, background: dbSubTab === tab.key ? '#e0e7ff' : '#f1f5f9',
-              color: dbSubTab === tab.key ? '#6366f1' : '#94a3b8',
-              borderRadius: 10, padding: '1px 8px', fontSize: 11, fontWeight: 600 }}>
-              {tab.count}
+          { key: 'list',      label: '인플루언서 리스트', count: platformInfs.length + csvInfs.length },
+          { key: 'blacklist', label: '블랙리스트',         count: blacklistInfs.length },
+        ].map(tab => {
+          const isActive = dbMainTab === tab.key;
+          const isBlack  = tab.key === 'blacklist';
+          return (
+            <button key={tab.key} onClick={() => setDbMainTab(tab.key)}
+              style={{
+                padding: '8px 20px', fontSize: 14, fontWeight: isActive ? 700 : 500,
+                background: isActive ? (isBlack ? '#dc2626' : '#6366f1') : '#f1f5f9',
+                color: isActive ? 'white' : '#64748b',
+                border: 'none', borderRadius: 999, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6,
+                transition: 'all 0.15s',
+              }}>
+              {isBlack ? '🚫' : '👥'} {tab.label}
+              <span style={{
+                background: isActive ? 'rgba(255,255,255,0.3)' : '#e2e8f0',
+                color: isActive ? 'white' : '#94a3b8',
+                borderRadius: 10, padding: '0px 8px', fontSize: 11, fontWeight: 700,
+              }}>{tab.count}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {dbMainTab === 'list' && (
+        <>
+          {/* 공통 필터 (플랫폼/카테고리/상태) */}
+          <div className="filter-bar">
+            <select value={fPlatform} onChange={e=>setFPlatform(e.target.value)}>
+              <option value="">전체 플랫폼</option>
+              {Object.entries(PLATFORMS).map(([k,v]) => <option key={k} value={k}>{v.emoji} {v.label}</option>)}
+            </select>
+            <select value={fCategory} onChange={e=>setFCategory(e.target.value)}>
+              <option value="">전체 카테고리</option>
+              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <select value={fStatus} onChange={e=>setFStatus(e.target.value)}>
+              <option value="">전체 상태</option>
+              {DB_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            {(fPlatform||fCategory||fStatus||fTier) &&
+              <button className="btn btn-secondary" onClick={()=>{setFPlatform('');setFCategory('');setFStatus('');setFTier('');}}>✕ 필터 초기화</button>}
+          </div>
+
+          {/* 서브탭 */}
+          <div style={{ display: 'flex', gap: 0, marginBottom: 0, borderBottom: '2px solid #e5e7eb' }}>
+            {[
+              { key: 'platform', label: '🎯 플랫폼 내 소싱 인원', count: platformInfs.length },
+              { key: 'csv',      label: '📥 외부 추가 인원',       count: csvInfs.length },
+            ].map(tab => (
+              <button key={tab.key} onClick={() => setDbSubTab(tab.key)}
+                style={{ padding: '10px 22px', fontSize: 13, fontWeight: dbSubTab === tab.key ? 700 : 400,
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  borderBottom: dbSubTab === tab.key ? '2px solid #6366f1' : '2px solid transparent',
+                  color: dbSubTab === tab.key ? '#6366f1' : '#64748b',
+                  marginBottom: -2 }}>
+                {tab.label}
+                <span style={{ marginLeft: 6, background: dbSubTab === tab.key ? '#e0e7ff' : '#f1f5f9',
+                  color: dbSubTab === tab.key ? '#6366f1' : '#94a3b8',
+                  borderRadius: 10, padding: '1px 8px', fontSize: 11, fontWeight: 600 }}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* 서브탭 컨텐츠 */}
+          <div className="card" style={{ overflow: 'hidden', borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>
+              {dbSubTab === 'platform' ? (
+                <input placeholder="🔍 채널명 / 핸들 / 카테고리 검색" value={platformSearch}
+                  onChange={e => setPlatformSearch(e.target.value)} style={{ width: '100%', fontSize: 13 }} />
+              ) : (
+                <input placeholder="🔍 채널명 / 핸들 / 카테고리 검색" value={csvSearch}
+                  onChange={e => setCsvSearch(e.target.value)} style={{ width: '100%', fontSize: 13 }} />
+              )}
+            </div>
+            {dbSubTab === 'platform'
+              ? renderInfTable(filteredPlatform, platformInfs.length === 0
+                  ? '플랫폼 소싱으로 추가된 인플루언서가 없습니다. YT Sourcing 탭에서 채널을 DB에 추가해보세요!'
+                  : '검색 결과가 없습니다.')
+              : renderInfTable(filteredCsv, csvInfs.length === 0
+                  ? '외부 CSV로 추가된 인플루언서가 없습니다.'
+                  : '검색 결과가 없습니다.')}
+          </div>
+        </>
+      )}
+
+      {dbMainTab === 'blacklist' && (
+        <div className="card" style={{ overflow: 'hidden' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <input placeholder="🔍 채널명 / 핸들 / 카테고리 검색" value={blacklistSearch}
+              onChange={e => setBlacklistSearch(e.target.value)} style={{ flex: 1, fontSize: 13 }} />
+            <span style={{ fontSize: 12, color: '#dc2626', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '4px 12px', whiteSpace: 'nowrap' }}>
+              🚫 총 {blacklistInfs.length}명 등록됨
             </span>
-          </button>
-        ))}
-      </div>
-
-      {/* 서브탭 컨텐츠 */}
-      <div className="card" style={{ overflow: 'hidden', borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
-        {/* 탭별 검색창 */}
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>
-          {dbSubTab === 'platform' ? (
-            <input
-              placeholder="🔍 채널명 / 핸들 / 카테고리 검색"
-              value={platformSearch}
-              onChange={e => setPlatformSearch(e.target.value)}
-              style={{ width: '100%', fontSize: 13 }}
-            />
-          ) : (
-            <input
-              placeholder="🔍 채널명 / 핸들 / 카테고리 검색"
-              value={csvSearch}
-              onChange={e => setCsvSearch(e.target.value)}
-              style={{ width: '100%', fontSize: 13 }}
-            />
-          )}
+          </div>
+          {renderBlacklistTable(filteredBlacklist)}
         </div>
-
-        {/* 탭별 테이블 */}
-        {dbSubTab === 'platform'
-          ? renderInfTable(filteredPlatform, platformInfs.length === 0
-              ? '플랫폼 소싱으로 추가된 인플루언서가 없습니다. YT Sourcing 탭에서 채널을 DB에 추가해보세요!'
-              : '검색 결과가 없습니다.')
-          : renderInfTable(filteredCsv, csvInfs.length === 0
-              ? '외부 CSV로 추가된 인플루언서가 없습니다.'
-              : '검색 결과가 없습니다.')}
-      </div>
+      )}
 
       {/* Import Modal */}
       {showImport && (
