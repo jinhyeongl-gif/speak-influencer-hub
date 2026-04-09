@@ -1196,7 +1196,8 @@ function OutreachPage({ influencers, campaigns, updateInf }) {
 
   // Gmail API 관련 state
   const [gmailClientId, setGmailClientId] = useLS('speak_gmail_client_id', '1027086754862-7pvthcct2me26ib8v0crigviosb5erik.apps.googleusercontent.com');
-  const [gmailToken, setGmailToken] = useState(null);
+  // useLS로 저장: 페이지 새로고침 후에도 토큰 유지 (~1시간), 매번 팝업 방지
+  const [gmailToken, setGmailToken] = useLS('speak_gmail_token_v1', null);
   const [showClientIdModal, setShowClientIdModal] = useState(false);
   const [clientIdInput, setClientIdInput] = useState('');
   const [sendingStatus, setSendingStatus] = useState(''); // '', 'sending', 'done', 'error'
@@ -1216,6 +1217,30 @@ function OutreachPage({ influencers, campaigns, updateInf }) {
   }
 
   function fillTemplate(str) { return fillTemplateFor(selInf, str); }
+
+  // Gmail 토큰 자동 초기화: 탭 진입 시 조용히 silent auth 시도
+  // 성공하면 이후 발송 시 팝업 없이 자동 발송 / 실패해도 오류 없이 무시
+  useEffect(() => {
+    if (!gmailClientId) return;
+    if (gmailToken && gmailToken.expires > Date.now()) return; // 유효한 토큰 이미 있음
+    const timer = setTimeout(function() {
+      if (!window.google || !window.google.accounts) return;
+      try {
+        var client = window.google.accounts.oauth2.initTokenClient({
+          client_id: gmailClientId,
+          scope: 'https://www.googleapis.com/auth/gmail.send',
+          callback: function(resp) {
+            if (!resp.error) {
+              setGmailToken({ access_token: resp.access_token, expires: Date.now() + (resp.expires_in - 60) * 1000 });
+            }
+          },
+          error_callback: function() {} // 팝업 불가 시 무시
+        });
+        client.requestAccessToken({ prompt: 'none' }); // 팝업 없이 silent 시도
+      } catch(e) {} // 실패해도 무시 — 발송 버튼 클릭 시 정상 팝업으로 폴백
+    }, 1500); // GIS 라이브러리 로드 여유 시간
+    return function() { clearTimeout(timer); };
+  }, [gmailClientId]);
 
   useEffect(() => {
     if (isNewMode) return; // 신규 모드에서는 useEffect로 덮어쓰지 않음
@@ -1349,7 +1374,7 @@ function OutreachPage({ influencers, campaigns, updateInf }) {
     if (!camp) { alert('캠페인을 먼저 선택해주세요.'); return; }
     var campInfs = influencers.filter(function(i) { return (camp.influencerIds || []).includes(i.id) && i.contactEmail; });
     if (!campInfs.length) { alert('캠페인에 이메일이 등록된 인플루언서가 없습니다.'); return; }
-    if (!window.confirm(campInfs.length + '명에게 이메일을 직접 발송하겠습니다.\nGoogle 계정 인증이 필요합니다.')) return;
+    if (!window.confirm(campInfs.length + '명에게 이메일을 발송하겠습니다.')) return;
 
     getGmailToken(function(token) {
       setBulkProgress({ current: 0, total: campInfs.length });
@@ -1853,6 +1878,25 @@ function OutreachPage({ influencers, campaigns, updateInf }) {
                 <div style={{ padding: '8px 20px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fca5a5', fontSize: 13, color: '#dc2626', fontWeight: 600 }}>❌ 발송 실패</div>
               ) : (
                 <button className="btn btn-primary" onClick={sendGmailDirect} disabled={!selInf?.contactEmail}>✉️ 메일 발송</button>
+              )}
+              {/* Gmail 연결 상태 배지 */}
+              {gmailToken && gmailToken.expires > Date.now() ? (
+                <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 20, background: '#f0fdf4', border: '1px solid #86efac', color: '#16a34a', fontWeight: 600 }}>🔗 Gmail 연결됨</span>
+              ) : (
+                <button style={{ fontSize: 11, padding: '5px 12px', borderRadius: 6, border: '1px solid #c4b5fd', background: '#f5f3ff', cursor: 'pointer', color: '#6d28d9', fontWeight: 600 }}
+                  onClick={() => {
+                    if (!window.google || !window.google.accounts || !gmailClientId) { alert('GIS 라이브러리가 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요.'); return; }
+                    var client = window.google.accounts.oauth2.initTokenClient({
+                      client_id: gmailClientId,
+                      scope: 'https://www.googleapis.com/auth/gmail.send',
+                      callback: function(resp) {
+                        if (resp.error) { alert('Google 인증 실패: ' + resp.error); return; }
+                        setGmailToken({ access_token: resp.access_token, expires: Date.now() + (resp.expires_in - 60) * 1000 });
+                      }
+                    });
+                    client.requestAccessToken({ prompt: '' });
+                  }}
+                  title="Gmail 미리 연결하기">🔌 Gmail 연결</button>
               )}
               <button style={{ fontSize: 11, padding: '6px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', color: '#64748b' }}
                 onClick={() => { setClientIdInput(gmailClientId); setShowClientIdModal(true); }}
